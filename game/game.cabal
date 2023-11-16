@@ -36,6 +36,7 @@ library
   build-depends:
       base >=4.7 && <5
     , sdl2
+    , text == 2.0.2
   default-language: Haskell2010
 
 executable game-exe
@@ -50,7 +51,11 @@ executable game-exe
   build-depends:
       base >=4.7 && <5
     , game
+    , extra
     , sdl2
+    , mtl
+    , sdl2-image
+    , text == 2.0.2
   default-language: Haskell2010
 
 test-suite game-test
@@ -66,5 +71,9 @@ test-suite game-test
   build-depends:
       base >=4.7 && <5
     , game
+    , extra
+    , mtl
     , sdl2
+    , sdl2-image
+    , text == 2.0.2
   default-language: Haskell2010
