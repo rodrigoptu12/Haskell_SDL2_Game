@@ -36,6 +36,15 @@ data AssetMap a = AssetMap
   , backGround :: a
   } deriving (Foldable, Traversable, Functor)
 
+data Character = Character
+ { xPos :: Int
+ , yPos :: Int
+ , jumping :: Bool
+ , jumpHeight :: Int
+ , yVelocity :: Int
+ , xVelocity :: Int
+ , gravity :: Int
+ }
 
 surfacePaths :: AssetMap FilePath
 surfacePaths = AssetMap
@@ -63,17 +72,14 @@ mapEventsToIntents = mapMaybe (payloadToIntent . SDL.eventPayload)
     payloadToIntent SDL.QuitEvent         = Just Quit
     payloadToIntent _                     = Nothing
 
-data Character = Character { xPos :: Int, yPos :: Int, jumping :: Bool, jumpHeight :: Int, yVelocity :: Int, gravity :: Int }
-
 updateCharacterPosition :: [Intent] -> Character -> Character
 updateCharacterPosition directions character =
     foldl (\acc dir -> case dir of
-                Render Left  -> acc { xPos = xPos acc - 2 }  -- Move left
-                Render Right -> acc { xPos = xPos acc + 2 }  -- Move right
+                Render Left  -> acc { xVelocity = -4, xPos = xPos acc - 4 }  -- Define a velocidade horizontal para a esquerda
+                Render Right -> acc { xVelocity = 4, xPos = xPos acc + 4 }   -- Define a velocidade horizontal para a direita
                 Render Up    -> if jumping acc then acc else acc { jumping = True, jumpHeight = 10, yVelocity = 13 }  -- Jump
                 _     -> acc
           ) character directions
-
 
 renderCharacter :: (MonadIO m) => SDL.Renderer -> AssetMap SDL.Texture -> Character -> m ()
 renderCharacter renderer assets c = liftIO $ do
@@ -97,19 +103,6 @@ appLoop window screen renderer assets character = do
         SDL.delay 16
         appLoop window screen renderer assets updatedCharacter'
         
-        pure True
-
--- gravityLogic :: Character -> Character
--- gravityLogic character =
---     if not (jumping character)
---         then
---           if not (isGround character)
---             then
---               let yPos' = yPos character + gravity character
---               in character { yPos = yPos' }
---             else character
---         else character
-
 gravityLogic :: Character -> Character
 gravityLogic c@Character { jumping = False, yPos = y, gravity = g }
   | isGround c = c
@@ -123,27 +116,10 @@ isGround c@Character { yPos = y, yVelocity = vy, jumpHeight = jh } = y - vy - jh
 jumpLogic :: Character -> Character
 jumpLogic c@Character { jumping = False } = c
 jumpLogic c@Character { jumping = True, yVelocity = 0 } = c { jumping = False }
-jumpLogic c@Character { jumping = True, yVelocity = vy, jumpHeight = jh } =
+jumpLogic c@Character { jumping = True, yVelocity = vy, xVelocity = vx, jumpHeight = jh } =
     if not (isGround c)
-        then c { yVelocity = vy - gravity c, yPos = yPos c - vy - jh, jumpHeight = jh - 1 }
-        else c { jumping = False, yVelocity = 0, jumpHeight = 0 }
-
-
--- jumpLogic :: Character -> Character
--- jumpLogic character =
---     if jumping character
---         then
---             let yVelocity' = yVelocity character - gravity character
---                 yPos' = yPos character - yVelocity' - jumpHeight character
---                 character' = character { yVelocity = yVelocity', yPos = yPos' }
---                 isGround' = isGround character'
---             in
---                 if isGround'
---                     then character { jumping = False, yVelocity = 0 }
---                     else character { yVelocity = yVelocity', yPos = yPos' }
---         else character
-
-
+        then c { yVelocity = vy - gravity c, xVelocity = vx, yPos = yPos c - vy - jh, jumpHeight = jh - 1, xPos = xPos c + xVelocity c }  -- Atualiza a posição horizontal
+        else c { jumping = False, yVelocity = 0, xVelocity = 0, jumpHeight = 0, xPos = xPos c + xVelocity c }  -- Atualiza a posição horizontal
 
 main :: IO ()
 main = do
@@ -159,30 +135,14 @@ main = do
 
   assets <- mapM (SDLImage.loadTexture renderer) surfacePaths
   
-
-  -- asset surface convert to texture
-  -- backgroundTexture <- SDL.createTextureFromSurface renderer (backGround assets)
-  -- maskDudeTexure <- SDL.createTextureFromSurface renderer (maskDude assets)
-
-  -- Load texture
   SDL.copy renderer (backGround assets) Nothing Nothing
   let positionInitial = SDL.Rectangle (SDL.P (SDL.V2 50 50)) (SDL.V2 50 50)
   SDL.copy renderer (maskDude assets) Nothing (Just positionInitial)
   SDL.present renderer
 
-  -- Tela inicial
+  appLoop window screen renderer assets (Character 250 250 False 0 0 0 2)
 
-  -- Loop principal
-  appLoop window screen renderer assets (Character 250 250 False 0 0 2)
+  SDL.delay 100
 
-
-  -- Tela final
-  
-  -- SDL.present renderer
-  SDL.delay 1000
-
-  -- mapM_ SDL.freeSurface assets
-  -- SDL.freeSurface screen
   SDL.destroyWindow window
   SDL.quit
-
