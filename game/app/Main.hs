@@ -8,7 +8,7 @@ import qualified SDL
 import qualified SDL.Image as SDLImage
 import Data.IORef
 import Foreign.C.Types (CInt)
-import Control.Monad (void, unless)
+import Control.Monad (void, unless, when)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Text (Text)
 import SDL.Video.Renderer (Rectangle)
@@ -16,6 +16,7 @@ import Control.Monad.Extra    (loopM, whileM)
 import Control.Monad.State
 import  Prelude                hiding (Left, Right)
 import Data.Maybe (mapMaybe)
+import GHC.Word (Word32)
 
 data Direction
   = Up
@@ -48,10 +49,16 @@ data Character = Character
 
 surfacePaths :: AssetMap FilePath
 surfacePaths = AssetMap
-  { 
+  {
     maskDude  = "./assets/Main Characters/Mask Dude/Jump (32x32).png",
     backGround = "./assets/Background/Blue.png"
   }
+
+-- define a 60 FPS constant
+fps :: GHC.Word.Word32
+fps = 60
+frameDelay :: GHC.Word.Word32
+frameDelay = 1000 `div` fps -- 1000 ms / 60 fps = 16.6666 ms
 
 getKey :: SDL.KeyboardEventData -> Maybe Intent
 getKey (SDL.KeyboardEventData _ SDL.Released _ _) = Nothing
@@ -88,20 +95,37 @@ renderCharacter renderer assets c = liftIO $ do
     SDL.copy renderer (maskDude assets) Nothing (Just position)
     SDL.present renderer
 
+isKeyPressed :: SDL.Scancode -> IO Bool
+isKeyPressed scancode = do
+  keyboardState <- SDL.getKeyboardState
+  return $ keyboardState scancode
+updateCharacter :: Character -> [Intent] -> Character
+updateCharacter c xs = 
+  let updatedCharacter = updateCharacterPosition xs c
+      updatedCharacter' = if jumping updatedCharacter then jumpLogic updatedCharacter else gravityLogic updatedCharacter
+  in updatedCharacter'
+  
+
 
 appLoop :: (MonadIO m) => SDL.Window -> SDL.Surface -> SDL.Renderer -> AssetMap SDL.Texture -> Character -> m Bool
 appLoop window screen renderer assets character = do
   xs <- mapEventsToIntents <$> SDL.pollEvents
 
+  -- frame start
+  frameStart <- SDL.ticks
+
   let shouldQuit = Quit `elem` xs
   if shouldQuit
       then pure False
       else do
-        let updatedCharacter = updateCharacterPosition xs character
-            updatedCharacter' = if jumping updatedCharacter then jumpLogic updatedCharacter else gravityLogic updatedCharacter
-        renderCharacter renderer assets updatedCharacter'
+        isRightPressed <- liftIO $ isKeyPressed SDL.ScancodeRight
+        isLeftPressed <- liftIO $ isKeyPressed SDL.ScancodeLeft
+        let xs' = xs ++ [if isRightPressed then Render Right else if isLeftPressed then Render Left else NotImplemented]
+        let character' = updateCharacter character xs'
+        renderCharacter renderer assets character'
+
         SDL.delay 16
-        appLoop window screen renderer assets updatedCharacter'
+        appLoop window screen renderer assets character'
         
 gravityLogic :: Character -> Character
 gravityLogic c@Character { jumping = False, yPos = y, gravity = g }
