@@ -37,6 +37,15 @@ data AssetMap a = AssetMap
   , backGround :: a
   } deriving (Foldable, Traversable, Functor)
 
+data Character = Character
+ { xPos :: Int
+ , yPos :: Int
+ , jumping :: Bool
+ , jumpHeight :: Int
+ , yVelocity :: Int
+ , xVelocity :: Int
+ , gravity :: Int
+ }
 
 surfacePaths :: AssetMap FilePath
 surfacePaths = AssetMap
@@ -70,18 +79,21 @@ mapEventsToIntents = mapMaybe (payloadToIntent . SDL.eventPayload)
     payloadToIntent SDL.QuitEvent         = Just Quit
     payloadToIntent _                     = Nothing
 
-data Character = Character { xPos :: Int, yPos :: Int }
-
 updateCharacterPosition :: [Intent] -> Character -> Character
 updateCharacterPosition directions character =
     foldl (\acc dir -> case dir of
-                Render Left  -> acc { xPos = xPos acc - 5 }  -- Move left
-                Render Right -> acc { xPos = xPos acc + 5 }  -- Move right
-                Render Up    -> acc { yPos = yPos acc - 5 }  -- Move up
-                Render Down  -> acc { yPos = yPos acc + 5 }  -- Move down
+                Render Left  -> acc { xVelocity = -4, xPos = xPos acc - 4 }  -- Define a velocidade horizontal para a esquerda
+                Render Right -> acc { xVelocity = 4, xPos = xPos acc + 4 }   -- Define a velocidade horizontal para a direita
+                Render Up    -> if jumping acc then acc else acc { jumping = True, jumpHeight = 10, yVelocity = 13 }  -- Jump
                 _     -> acc
           ) character directions
 
+renderCharacter :: (MonadIO m) => SDL.Renderer -> AssetMap SDL.Texture -> Character -> m ()
+renderCharacter renderer assets c = liftIO $ do
+    let position = SDL.Rectangle (SDL.P (SDL.V2 (fromIntegral $ xPos c) (fromIntegral $ yPos c))) (SDL.V2 50 50)
+    SDL.copy renderer (backGround assets) Nothing Nothing
+    SDL.copy renderer (maskDude assets) Nothing (Just position)
+    SDL.present renderer
 
 appLoop :: (MonadIO m) => SDL.Window -> SDL.Surface -> SDL.Renderer -> AssetMap SDL.Texture -> Character -> m Bool
 appLoop window screen renderer assets character = do
@@ -94,22 +106,29 @@ appLoop window screen renderer assets character = do
   if shouldQuit
       then pure False
       else do
-        let updatedCharacter = updateCharacterPosition [(Render Right)] character
-            positionInitial = SDL.Rectangle (SDL.P (SDL.V2 (fromIntegral $ xPos updatedCharacter) (fromIntegral $ yPos updatedCharacter))) (SDL.V2 50 50)
-        SDL.copy renderer (backGround assets) Nothing Nothing
-        SDL.copy renderer (maskDude assets) Nothing (Just positionInitial)
-        SDL.present renderer
+        let updatedCharacter = updateCharacterPosition xs character
+            updatedCharacter' = if jumping updatedCharacter then jumpLogic updatedCharacter else gravityLogic updatedCharacter
+        renderCharacter renderer assets updatedCharacter'
+        SDL.delay 16
+        appLoop window screen renderer assets updatedCharacter'
+        
+gravityLogic :: Character -> Character
+gravityLogic c@Character { jumping = False, yPos = y, gravity = g }
+  | isGround c = c
+  | otherwise = c { yPos = y + g }
+gravityLogic c = c
 
-        -- frame end
-        frameEnd <- SDL.ticks
+isGround :: Character -> Bool
+isGround c@Character { yPos = y, yVelocity = vy, jumpHeight = jh } = y - vy - jh  >= 250  -- Altura do chão
 
-        -- frame cap
-        let frameTime = frameEnd - frameStart
-        when (frameDelay > frameTime) $ SDL.delay (frameDelay - frameTime)
 
-        appLoop window screen renderer assets updatedCharacter
-        pure True
-
+jumpLogic :: Character -> Character
+jumpLogic c@Character { jumping = False } = c
+jumpLogic c@Character { jumping = True, yVelocity = 0 } = c { jumping = False }
+jumpLogic c@Character { jumping = True, yVelocity = vy, xVelocity = vx, jumpHeight = jh } =
+    if not (isGround c)
+        then c { yVelocity = vy - gravity c, xVelocity = vx, yPos = yPos c - vy - jh, jumpHeight = jh - 1, xPos = xPos c + xVelocity c }  -- Atualiza a posição horizontal
+        else c { jumping = False, yVelocity = 0, xVelocity = 0, jumpHeight = 0, xPos = xPos c + xVelocity c }  -- Atualiza a posição horizontal
 
 main :: IO ()
 main = do
@@ -124,28 +143,15 @@ main = do
   renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
 
   assets <- mapM (SDLImage.loadTexture renderer) surfacePaths
-
-
-  -- asset surface convert to texture
-  -- backgroundTexture <- SDL.createTextureFromSurface renderer (backGround assets)
-  -- maskDudeTexure <- SDL.createTextureFromSurface renderer (maskDude assets)
-
-  -- Load texture
+  
   SDL.copy renderer (backGround assets) Nothing Nothing
-  let positionInitial = SDL.Rectangle (SDL.P (SDL.V2 100 100)) (SDL.V2 50 50)
+  let positionInitial = SDL.Rectangle (SDL.P (SDL.V2 50 50)) (SDL.V2 50 50)
   SDL.copy renderer (maskDude assets) Nothing (Just positionInitial)
   SDL.present renderer
 
-  -- Tela inicial
+  appLoop window screen renderer assets (Character 250 250 False 0 0 0 2)
 
-  -- Loop principal
-  appLoop window screen renderer assets (Character 100 100)
+  SDL.delay 100
 
-
-  -- Tela final
-
-  -- mapM_ SDL.freeSurface assets
-  -- SDL.freeSurface screen
   SDL.destroyWindow window
   SDL.quit
-
