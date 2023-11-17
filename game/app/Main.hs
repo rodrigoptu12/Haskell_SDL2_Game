@@ -8,7 +8,7 @@ import qualified SDL
 import qualified SDL.Image as SDLImage
 import Data.IORef
 import Foreign.C.Types (CInt)
-import Control.Monad (void, unless)
+import Control.Monad (void, unless, when)
 import Control.Monad.IO.Class (MonadIO)
 import Data.Text (Text)
 import SDL.Video.Renderer (Rectangle)
@@ -16,6 +16,7 @@ import Control.Monad.Extra    (loopM, whileM)
 import Control.Monad.State
 import  Prelude                hiding (Left, Right)
 import Data.Maybe (mapMaybe)
+import GHC.Word (Word32)
 
 data Direction
   = Up
@@ -39,10 +40,16 @@ data AssetMap a = AssetMap
 
 surfacePaths :: AssetMap FilePath
 surfacePaths = AssetMap
-  { 
+  {
     maskDude  = "./assets/Main Characters/Mask Dude/Jump (32x32).png",
     backGround = "./assets/Background/Blue.png"
   }
+
+-- define a 60 FPS constant
+fps :: GHC.Word.Word32
+fps = 60
+frameDelay :: GHC.Word.Word32
+frameDelay = 1000 `div` fps -- 1000 ms / 60 fps = 16.6666 ms
 
 getKey :: SDL.KeyboardEventData -> Maybe Intent
 getKey (SDL.KeyboardEventData _ SDL.Released _ _) = Nothing
@@ -68,26 +75,37 @@ data Character = Character { xPos :: Int, yPos :: Int }
 updateCharacterPosition :: [Intent] -> Character -> Character
 updateCharacterPosition directions character =
     foldl (\acc dir -> case dir of
-                Render Left  -> acc { xPos = xPos acc - 2 }  -- Move left
-                Render Right -> acc { xPos = xPos acc + 2 }  -- Move right
+                Render Left  -> acc { xPos = xPos acc - 5 }  -- Move left
+                Render Right -> acc { xPos = xPos acc + 5 }  -- Move right
+                Render Up    -> acc { yPos = yPos acc - 5 }  -- Move up
+                Render Down  -> acc { yPos = yPos acc + 5 }  -- Move down
                 _     -> acc
           ) character directions
-
 
 
 appLoop :: (MonadIO m) => SDL.Window -> SDL.Surface -> SDL.Renderer -> AssetMap SDL.Texture -> Character -> m Bool
 appLoop window screen renderer assets character = do
   xs <- mapEventsToIntents <$> SDL.pollEvents
 
+  -- frame start
+  frameStart <- SDL.ticks
+
   let shouldQuit = Quit `elem` xs
   if shouldQuit
       then pure False
       else do
-        let updatedCharacter = updateCharacterPosition xs character
+        let updatedCharacter = updateCharacterPosition [(Render Right)] character
             positionInitial = SDL.Rectangle (SDL.P (SDL.V2 (fromIntegral $ xPos updatedCharacter) (fromIntegral $ yPos updatedCharacter))) (SDL.V2 50 50)
         SDL.copy renderer (backGround assets) Nothing Nothing
         SDL.copy renderer (maskDude assets) Nothing (Just positionInitial)
         SDL.present renderer
+
+        -- frame end
+        frameEnd <- SDL.ticks
+
+        -- frame cap
+        let frameTime = frameEnd - frameStart
+        when (frameDelay > frameTime) $ SDL.delay (frameDelay - frameTime)
 
         appLoop window screen renderer assets updatedCharacter
         pure True
@@ -106,7 +124,7 @@ main = do
   renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
 
   assets <- mapM (SDLImage.loadTexture renderer) surfacePaths
-  
+
 
   -- asset surface convert to texture
   -- backgroundTexture <- SDL.createTextureFromSurface renderer (backGround assets)
@@ -125,9 +143,6 @@ main = do
 
 
   -- Tela final
-  
-  -- SDL.present renderer
-  SDL.delay 1000
 
   -- mapM_ SDL.freeSurface assets
   -- SDL.freeSurface screen
