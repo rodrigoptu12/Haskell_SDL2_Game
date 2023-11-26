@@ -19,6 +19,22 @@ import Data.Maybe (mapMaybe)
 import GHC.Word (Word32)
 import qualified Data.Map as Map
 import Data.Map (Map)
+import Control.Monad.State (StateT (..), evalStateT, get, modify, put)
+
+data GameState = GameState
+  { window :: SDL.Window,
+    renderer :: SDL.Renderer,
+    font :: SDLFont.Font,
+    assets :: AssetMap' SDL.Surface,
+    counter :: Int
+  }
+
+
+
+
+
+
+
 
 data Direction
   = Up
@@ -144,7 +160,6 @@ renderCharacter renderer assets c = liftIO $ do
 renderEnemy :: (MonadIO m) => SDL.Renderer -> AssetMap SDL.Texture -> Enemy -> m ()
 renderEnemy renderer assets c = liftIO $ do
     let position = SDL.Rectangle (SDL.P (SDL.V2 (fromIntegral $ xPosE c) (fromIntegral $ yPosE c))) (SDL.V2 50 50)
-    -- SDL.copy renderer (backGround assets) Nothing Nothing
     SDL.copy renderer (pinkMan assets) Nothing (Just position)
 
 
@@ -175,10 +190,26 @@ hasIntersection (SDL.Rectangle (SDL.P (SDL.V2 x1 y1)) (SDL.V2 w1 h1)) (SDL.Recta
       h2' = fromIntegral h2
   in x1' < x2' + w2' && x1' + w1' > x2' && y1' < y2' + h2' && y1' + h1' > y2'
  
+-- moving enemy logic, move enemy to the right and left , cicle
+movingEnemy :: Enemy -> Enemy
+movingEnemy character 
+  | xPosE character <= 300 = character { xVelocityE = 2, xPosE = xPosE character + 2 }
+  | xPosE character >= 600 = character { xVelocityE = -2, xPosE = xPosE character - 2 }
+  | xPosE character <= 600 && xPosE character >= 300 = character { xVelocityE = xVelocityE character, xPosE = xPosE character + xVelocityE character }
+  
 
 
+-- updateCharacterPosition :: [Intent] -> Character -> Character
+-- updateCharacterPosition directions character =
+--     foldl (\acc dir -> case dir of
+--                 Render Left  -> acc { xVelocity = -4, xPos = xPos acc - 4 }  -- Define a velocidade horizontal para a esquerda
+--                 Render Right -> acc { xVelocity = 4, xPos = xPos acc + 4 }   -- Define a velocidade horizontal para a direita
+--                 Render Up    -> if jumping acc then acc else acc { jumping = True, jumpHeight = 10, yVelocity = 13 }  -- Jump
+--                 _     -> acc
+--           ) character directions
 
-appLoop :: (MonadIO m) => SDL.Window -> SDL.Surface -> SDL.Renderer -> AssetMap SDL.Texture -> Character -> Enemy-> m Bool
+
+appLoop :: (MonadIO m) => SDL.Window -> SDL.Surface -> SDL.Renderer -> AssetMap SDL.Texture -> Character -> Enemy -> m Bool
 appLoop window screen renderer assets character enemy = do
   xs <- mapEventsToIntents <$> SDL.pollEvents
 
@@ -194,34 +225,39 @@ appLoop window screen renderer assets character enemy = do
         isUpPressed <- liftIO $ isKeyPressed SDL.ScancodeUp
         let xs' = xs ++ [if isRightPressed then Render Right else if isLeftPressed then Render Left else if isUpPressed then Render Up else NotImplemented]
         let character' = updateCharacter character xs'
-        -- renderCharacter renderer assets character'
+        renderCharacter renderer assets character'
         -- renderEnemy renderer assets enemy
         -- renderGround renderer window assets 
 
         -- get position of character and enemy
+        let enemy' = movingEnemy enemy
+        -- renderEnemy renderer assets enemy'
+
         let characterPosition = SDL.Rectangle (SDL.P (SDL.V2 (fromIntegral $ xPos character') (fromIntegral $ yPos character'))) (SDL.V2 50 50)
-        let enemyPosition = SDL.Rectangle (SDL.P (SDL.V2 (fromIntegral $ xPosE enemy) (fromIntegral $ yPosE enemy))) (SDL.V2 50 50)
+        let enemyPosition = SDL.Rectangle (SDL.P (SDL.V2 (fromIntegral $ xPosE enemy') (fromIntegral $ yPosE enemy'))) (SDL.V2 50 50)
         -- check if they intersect
         let intersect = hasIntersection characterPosition enemyPosition
         -- if they intersect, stop the game
         if intersect
           -- personagem morre, cai da tela
           then do
-            let character'' = character' { yPos = 254 }
+            let character'' = character' { yPos = 244 }
             renderCharacter renderer assets character''
-            -- SDL.delay 1000
             pure False
           else do
             -- personagem não morre, continua o jogo
             renderCharacter renderer assets character'
             pure True
 
-        renderEnemy renderer assets enemy
-        renderGround renderer window assets 
-        SDL.present renderer
+        -- let enemy' = movingEnemy enemy
+        renderEnemy renderer assets enemy'
 
+        renderGround renderer window assets 
+
+
+        SDL.present renderer
         SDL.delay 16
-        appLoop window screen renderer assets character' enemy
+        appLoop window screen renderer assets character' enemy'
         
 gravityLogic :: Character -> Character
 gravityLogic c@Character { jumping = False, yPos = y, gravity = g }
@@ -241,21 +277,57 @@ jumpLogic c@Character { jumping = True, yVelocity = vy, xVelocity = vx, jumpHeig
         then c { yVelocity = vy - gravity c, xVelocity = vx, yPos = yPos c - vy - jh, jumpHeight = jh - 1, xPos = xPos c + xVelocity c }  -- Atualiza a posição horizontal
         else c { jumping = False, yVelocity = 0, xVelocity = 0, jumpHeight = 0, xPos = xPos c + xVelocity c }  -- Atualiza a posição horizontal
 
+
+initialState :: IO GameState
+initialState = do
+  SDL.initializeAll
+  SDLFont.initialize
+  font' <- SDLFont.load "assets/fonts/QuinqueFive.ttf" 12
+  w <- SDL.createWindow "Oiram Epoosh Game" SDL.defaultWindow
+  SDL.showWindow w
+  screen <- SDL.getWindowSurface w
+  SDL.surfaceFillRect screen Nothing (SDL.V4 maxBound maxBound maxBound maxBound)
+  SDL.updateWindowSurface w
+
+  r <- SDL.createRenderer w (-1) SDL.defaultRenderer
+  assets' <- mapM (SDLImage.loadTexture renderer) surfacePaths
+  return $
+    GameState
+      { window = w,
+        renderer = r,
+        font = font',
+        assets = assets',
+        counter = 0
+      }
+
+
+
 main :: IO ()
 main = do
   SDL.initializeAll
-  window <- SDL.createWindow "Oiram Epoosh Game" SDL.defaultWindow
-  SDL.showWindow window
-  screen <- SDL.getWindowSurface window
+  -- window <- SDL.createWindow "Oiram Epoosh Game" SDL.defaultWindow
+  -- SDL.showWindow window
+  -- screen <- SDL.getWindowSurface window
 
-  SDL.surfaceFillRect screen Nothing (SDL.V4 maxBound maxBound maxBound maxBound)
-  SDL.updateWindowSurface window
+  -- SDL.surfaceFillRect screen Nothing (SDL.V4 maxBound maxBound maxBound maxBound)
+  -- SDL.updateWindowSurface window
 
-  renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
+  -- renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
 
-  assets <- mapM (SDLImage.loadTexture renderer) surfacePaths
+  -- assets <- mapM (SDLImage.loadTexture renderer) surfacePaths
 
-  appLoop window screen renderer assets (Character 250 250 False 0 0 0 2) (Enemy 300 250 False 0 0 0 2)
+  state <- initialState
+  
+-- data GameState = GameState
+--   { window :: SDL.Window,
+--     renderer :: SDL.Renderer,
+--     font :: SDLFont.Font,
+--     assets :: AssetMap' SDL.Surface,
+--     counter :: Int
+--   }
+  -- appLoop window screen renderer assets (Character 350 250 False 0 0 0 2) (Enemy 250 250 False 0 0 2 2)
+  appLoop window screen renderer assets (Character 350 250 False 0 0 0 2) (Enemy 250 250 False 0 0 2 2)
+
 
   SDL.delay 100
 
