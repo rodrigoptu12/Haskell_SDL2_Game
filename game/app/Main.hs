@@ -29,13 +29,6 @@ data GameState = GameState
     counter :: Int
   }
 
-
-
-
-
-
-
-
 data Direction
   = Up
   | Down
@@ -127,26 +120,18 @@ renderGround :: (MonadIO m) => SDL.Renderer -> SDL.Window -> AssetMap SDL.Textur
 renderGround renderer window assets = liftIO $ do
     let groundTexture = ground assets
 
-    -- Get the dimensions of the texture
     SDL.TextureInfo _format _access _width _height <- SDL.queryTexture groundTexture
 
-    -- Get the dimensions of the window associated with the renderer
---     int windowWidth = rect.w;
--- int windowHeight = rect.h;
     SDL.V2 windowWidth windowHeight  <- SDL.get (SDL.windowSize window)
 
-    -- Calculate how many times to repeat the texture to cover the entire window
     let repeatX = ceiling (fromIntegral windowWidth / fromIntegral _width :: Float)
         repeatY = ceiling (fromIntegral windowHeight / fromIntegral _height :: Float)
 
-    -- Render the texture multiple times to cover the entire window
     forM_ [0..repeatX - 1] $ \x ->
         forM_ [0..repeatY - 1] $ \y ->
             SDL.copy renderer groundTexture Nothing (Just $ SDL.Rectangle (SDL.P (SDL.V2 (x * _width) (300))) (SDL.V2 _width _height))
     let landTexture = land assets
-    -- da altura 300 ate o final da tela
-    -- forM_ [300, 346..windowHeight] $ \y ->
-    --     SDL.copy renderer landTexture Nothing (Just $ SDL.Rectangle (SDL.P (SDL.V2 0 y)) (SDL.V2 _width _height))
+
     forM_ [346, 392..windowHeight] $ \y ->
       forM_ [0..repeatX - 1] $ \x ->
         SDL.copy renderer landTexture Nothing (Just $ SDL.Rectangle (SDL.P (SDL.V2 (x * _width) y)) (SDL.V2 _width _height))
@@ -175,9 +160,6 @@ updateCharacter c xs =
   in updatedCharacter'
   
 
--- hasIntersection :: SDL.Rectangle CInt -> SDL.Rectangle CInt -> Bool
--- hasIntersection rect1 rect2 = Main.hasIntersection rect1 rect2
-
 hasIntersection :: SDL.Rectangle CInt -> SDL.Rectangle CInt -> Bool
 hasIntersection (SDL.Rectangle (SDL.P (SDL.V2 x1 y1)) (SDL.V2 w1 h1)) (SDL.Rectangle (SDL.P (SDL.V2 x2 y2)) (SDL.V2 w2 h2)) =
   let x1' = fromIntegral x1
@@ -190,28 +172,13 @@ hasIntersection (SDL.Rectangle (SDL.P (SDL.V2 x1 y1)) (SDL.V2 w1 h1)) (SDL.Recta
       h2' = fromIntegral h2
   in x1' < x2' + w2' && x1' + w1' > x2' && y1' < y2' + h2' && y1' + h1' > y2'
  
--- moving enemy logic, move enemy to the right and left , cicle
 movingEnemy :: Enemy -> Enemy
 movingEnemy character 
   | xPosE character <= 300 = character { xVelocityE = 2, xPosE = xPosE character + 2 }
   | xPosE character >= 600 = character { xVelocityE = -2, xPosE = xPosE character - 2 }
   | xPosE character <= 600 && xPosE character >= 300 = character { xVelocityE = xVelocityE character, xPosE = xPosE character + xVelocityE character }
-  
 
-
--- updateCharacterPosition :: [Intent] -> Character -> Character
--- updateCharacterPosition directions character =
---     foldl (\acc dir -> case dir of
---                 Render Left  -> acc { xVelocity = -4, xPos = xPos acc - 4 }  -- Define a velocidade horizontal para a esquerda
---                 Render Right -> acc { xVelocity = 4, xPos = xPos acc + 4 }   -- Define a velocidade horizontal para a direita
---                 Render Up    -> if jumping acc then acc else acc { jumping = True, jumpHeight = 10, yVelocity = 13 }  -- Jump
---                 _     -> acc
---           ) character directions
-
-
--- appLoop :: (MonadIO m) => StateT GameState -> Character -> Enemy -> m Bool
 appLoop :: StateT GameState IO ()
--- appLoop window screen renderer assets character enemy = do
 appLoop = do
   events <- SDL.pollEvents
   let quit = elem SDL.QuitEvent $ map SDL.eventPayload events
@@ -220,7 +187,6 @@ appLoop = do
     then return ()
     else do
         GameState { window = window, renderer = renderer, assets = assets, character = character, enemy = enemy, counter = counter } <- get 
-        -- xs <- mapEventsToIntents <$> SDL.pollEvents
         let xs = mapEventsToIntents events
         -- frame start
         frameStart <- SDL.ticks
@@ -229,35 +195,22 @@ appLoop = do
         isUpPressed <- liftIO $ isKeyPressed SDL.ScancodeUp
         let xs' = xs ++ [if isRightPressed then Render Right else if isLeftPressed then Render Left else if isUpPressed then Render Up else NotImplemented]
         let character' = updateCharacter character xs'
-        -- state update
-        
         renderCharacter renderer assets character'
-        -- renderEnemy renderer assets enemy
-        -- renderGround renderer window assets 
-
-        -- get position of character and enemy
         let enemy' = movingEnemy enemy
-        -- renderEnemy renderer assets enemy'
-
         let characterPosition = SDL.Rectangle (SDL.P (SDL.V2 (fromIntegral $ xPos character') (fromIntegral $ yPos character'))) (SDL.V2 50 50)
         let enemyPosition = SDL.Rectangle (SDL.P (SDL.V2 (fromIntegral $ xPosE enemy') (fromIntegral $ yPosE enemy'))) (SDL.V2 50 50)
-        -- check if they intersect
         let intersect = hasIntersection characterPosition enemyPosition
-        -- if they intersect, stop the game
         if intersect
-          -- personagem morre, cai da tela
           then do
             let character'' = character' { yPos = 244 }
             renderCharacter renderer assets character''
           else do
-            -- personagem não morre, continua o jogo
             renderCharacter renderer assets character'
 
-        -- let enemy' = movingEnemy enemy
         renderEnemy renderer assets enemy'
 
         renderGround renderer window assets 
-        put $ GameState { window = window, renderer = renderer, assets = assets, character = character', enemy = enemy, counter = counter + 1 }
+        put $ GameState { window = window, renderer = renderer, assets = assets, character = character', enemy = enemy', counter = counter + 1 }
 
         SDL.present renderer
         SDL.delay 16
