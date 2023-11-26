@@ -20,12 +20,12 @@ import GHC.Word (Word32)
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Control.Monad.State (StateT (..), evalStateT, get, modify, put)
-
 data GameState = GameState
   { window :: SDL.Window,
     renderer :: SDL.Renderer,
-    font :: SDLFont.Font,
-    assets :: AssetMap' SDL.Surface,
+    assets :: AssetMap SDL.Texture,
+    character :: Character,
+    enemy :: Enemy,
     counter :: Int
   }
 
@@ -209,22 +209,28 @@ movingEnemy character
 --           ) character directions
 
 
-appLoop :: (MonadIO m) => SDL.Window -> SDL.Surface -> SDL.Renderer -> AssetMap SDL.Texture -> Character -> Enemy -> m Bool
-appLoop window screen renderer assets character enemy = do
-  xs <- mapEventsToIntents <$> SDL.pollEvents
-
-  -- frame start
-  frameStart <- SDL.ticks
-
-  let shouldQuit = Quit `elem` xs
-  if shouldQuit
-      then pure False
-      else do
+-- appLoop :: (MonadIO m) => StateT GameState -> Character -> Enemy -> m Bool
+appLoop :: StateT GameState IO ()
+-- appLoop window screen renderer assets character enemy = do
+appLoop = do
+  events <- SDL.pollEvents
+  let quit = elem SDL.QuitEvent $ map SDL.eventPayload events
+  -- se n 
+  if quit
+    then return ()
+    else do
+        GameState { window = window, renderer = renderer, assets = assets, character = character, enemy = enemy, counter = counter } <- get 
+        -- xs <- mapEventsToIntents <$> SDL.pollEvents
+        let xs = mapEventsToIntents events
+        -- frame start
+        frameStart <- SDL.ticks
         isRightPressed <- liftIO $ isKeyPressed SDL.ScancodeRight
         isLeftPressed <- liftIO $ isKeyPressed SDL.ScancodeLeft
         isUpPressed <- liftIO $ isKeyPressed SDL.ScancodeUp
         let xs' = xs ++ [if isRightPressed then Render Right else if isLeftPressed then Render Left else if isUpPressed then Render Up else NotImplemented]
         let character' = updateCharacter character xs'
+        -- state update
+        
         renderCharacter renderer assets character'
         -- renderEnemy renderer assets enemy
         -- renderGround renderer window assets 
@@ -243,21 +249,19 @@ appLoop window screen renderer assets character enemy = do
           then do
             let character'' = character' { yPos = 244 }
             renderCharacter renderer assets character''
-            pure False
           else do
             -- personagem não morre, continua o jogo
             renderCharacter renderer assets character'
-            pure True
 
         -- let enemy' = movingEnemy enemy
         renderEnemy renderer assets enemy'
 
         renderGround renderer window assets 
-
+        put $ GameState { window = window, renderer = renderer, assets = assets, character = character', enemy = enemy, counter = counter + 1 }
 
         SDL.present renderer
         SDL.delay 16
-        appLoop window screen renderer assets character' enemy'
+        appLoop 
         
 gravityLogic :: Character -> Character
 gravityLogic c@Character { jumping = False, yPos = y, gravity = g }
@@ -281,8 +285,6 @@ jumpLogic c@Character { jumping = True, yVelocity = vy, xVelocity = vx, jumpHeig
 initialState :: IO GameState
 initialState = do
   SDL.initializeAll
-  SDLFont.initialize
-  font' <- SDLFont.load "assets/fonts/QuinqueFive.ttf" 12
   w <- SDL.createWindow "Oiram Epoosh Game" SDL.defaultWindow
   SDL.showWindow w
   screen <- SDL.getWindowSurface w
@@ -290,13 +292,15 @@ initialState = do
   SDL.updateWindowSurface w
 
   r <- SDL.createRenderer w (-1) SDL.defaultRenderer
-  assets' <- mapM (SDLImage.loadTexture renderer) surfacePaths
+  assets' <- mapM (SDLImage.loadTexture r) surfacePaths
+  
   return $
     GameState
       { window = w,
         renderer = r,
-        font = font',
         assets = assets',
+        character = (Character 350 250 False 0 0 0 2),
+        enemy = (Enemy 250 250 False 0 0 2 2),
         counter = 0
       }
 
@@ -326,10 +330,9 @@ main = do
 --     counter :: Int
 --   }
   -- appLoop window screen renderer assets (Character 350 250 False 0 0 0 2) (Enemy 250 250 False 0 0 2 2)
-  appLoop window screen renderer assets (Character 350 250 False 0 0 0 2) (Enemy 250 250 False 0 0 2 2)
-
+  evalStateT appLoop state
 
   SDL.delay 100
 
-  SDL.destroyWindow window
+  SDL.destroyWindow (window state)
   SDL.quit
