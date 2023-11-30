@@ -188,18 +188,29 @@ appLoop = do
     else do
         GameState { window = window, renderer = renderer, assets = assets, character = character, enemy = enemy, counter = counter } <- get 
         let xs = mapEventsToIntents events
-        -- frame start
         frameStart <- SDL.ticks
+
+        --  Update
         isRightPressed <- liftIO $ isKeyPressed SDL.ScancodeRight
         isLeftPressed <- liftIO $ isKeyPressed SDL.ScancodeLeft
         isUpPressed <- liftIO $ isKeyPressed SDL.ScancodeUp
         let xs' = xs ++ [if isRightPressed then Render Right else if isLeftPressed then Render Left else if isUpPressed then Render Up else NotImplemented]
+
+
         let character' = updateCharacter character xs'
         renderCharacter renderer assets character'
+
+        -- Colisão
         let enemy' = movingEnemy enemy
         let characterPosition = SDL.Rectangle (SDL.P (SDL.V2 (fromIntegral $ xPos character') (fromIntegral $ yPos character'))) (SDL.V2 50 50)
         let enemyPosition = SDL.Rectangle (SDL.P (SDL.V2 (fromIntegral $ xPosE enemy') (fromIntegral $ yPosE enemy'))) (SDL.V2 50 50)
         let intersect = hasIntersection characterPosition enemyPosition
+
+
+
+
+        
+        -- {colidiu, inimigo}
         if intersect
           then do
             let character'' = character' { yPos = 244 }
@@ -207,9 +218,11 @@ appLoop = do
           else do
             renderCharacter renderer assets character'
 
-        renderEnemy renderer assets enemy'
 
+        renderEnemy renderer assets enemy'
         renderGround renderer window assets 
+
+        --  Delay
         put $ GameState { window = window, renderer = renderer, assets = assets, character = character', enemy = enemy', counter = counter + 1 }
 
         SDL.present renderer
@@ -258,34 +271,13 @@ initialState = do
       }
 
 
-
 main :: IO ()
 main = do
+
   SDL.initializeAll
-  -- window <- SDL.createWindow "Oiram Epoosh Game" SDL.defaultWindow
-  -- SDL.showWindow window
-  -- screen <- SDL.getWindowSurface window
-
-  -- SDL.surfaceFillRect screen Nothing (SDL.V4 maxBound maxBound maxBound maxBound)
-  -- SDL.updateWindowSurface window
-
-  -- renderer <- SDL.createRenderer window (-1) SDL.defaultRenderer
-
-  -- assets <- mapM (SDLImage.loadTexture renderer) surfacePaths
-
   state <- initialState
   
--- data GameState = GameState
---   { window :: SDL.Window,
---     renderer :: SDL.Renderer,
---     font :: SDLFont.Font,
---     assets :: AssetMap' SDL.Surface,
---     counter :: Int
---   }
-  -- appLoop window screen renderer assets (Character 350 250 False 0 0 0 2) (Enemy 250 250 False 0 0 2 2)
   evalStateT appLoop state
-
-  SDL.delay 100
 
   SDL.destroyWindow (window state)
   SDL.quit
