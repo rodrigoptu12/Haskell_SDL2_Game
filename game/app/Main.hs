@@ -20,14 +20,6 @@ import GHC.Word (Word32)
 import qualified Data.Map as Map
 import Data.Map (Map)
 import Control.Monad.State (StateT (..), evalStateT, get, modify, put)
-data GameState = GameState
-  { window :: SDL.Window,
-    renderer :: SDL.Renderer,
-    assets :: AssetMap SDL.Texture,
-    character :: Character,
-    enemy :: Enemy,
-    counter :: Int
-  }
 
 data Direction
   = Up
@@ -49,7 +41,27 @@ data AssetMap a = AssetMap
   , ground :: a
   , land :: a
   , pinkMan :: a
+  , tijoloWall :: a
   } deriving (Foldable, Traversable, Functor)
+
+
+
+
+drawMap :: (MonadIO m) => SDL.Renderer -> Mapa -> AssetMap SDL.Texture -> m ()
+drawMap renderer mapa assets= liftIO $ do
+  let mapa' = zip [0..] mapa
+  forM_ mapa' $ \(y, linha) ->
+    forM_ (zip [0..] linha) $ \(x, char) ->
+      case char of
+        '#' -> do
+          SDL.copy renderer (ground assets) Nothing (Just $ SDL.Rectangle (SDL.P (SDL.V2 (x * 46) (y * 46))) (SDL.V2 46 46))
+        '$' -> do
+          SDL.copy renderer (land assets) Nothing (Just $ SDL.Rectangle (SDL.P (SDL.V2 (x * 46) (y * 46))) (SDL.V2 46 46))
+        '*' -> do
+          SDL.copy renderer (tijoloWall assets) Nothing (Just $ SDL.Rectangle (SDL.P (SDL.V2 (x * 46) (y * 46))) (SDL.V2 46 46))
+        _ -> return ()
+
+
 
 data Character = Character
  { xPos :: Int
@@ -71,6 +83,18 @@ data Enemy = Enemy
  , gravityE :: Int
  }
 
+type Mapa = [[Char]]
+
+data GameState = GameState
+  { window :: SDL.Window,
+    renderer :: SDL.Renderer,
+    assets :: AssetMap SDL.Texture,
+    character :: Character,
+    enemy :: Enemy,
+    counter :: Int,
+    exemploMapa :: Mapa
+  }
+
 surfacePaths :: AssetMap FilePath
 surfacePaths = AssetMap
   {
@@ -78,7 +102,8 @@ surfacePaths = AssetMap
     backGround = "./assets/Background/Blue.png",
     ground = "./assets/Terrain/ground.png",
     land = "./assets/Terrain/land.png",
-    pinkMan = "./assets/Main Characters/Pink Man/Jump (32x32).png"
+    pinkMan = "./assets/Main Characters/Pink Man/Jump (32x32).png",
+    tijoloWall = "./assets/Terrain/tijolo.png"
   }
 
 -- define a 60 FPS constant
@@ -186,7 +211,7 @@ appLoop = do
   if quit
     then return ()
     else do
-        GameState { window = window, renderer = renderer, assets = assets, character = character, enemy = enemy, counter = counter } <- get 
+        GameState { window = window, renderer = renderer, assets = assets, character = character, enemy = enemy, counter = counter, exemploMapa =exemploMapa } <- get 
         let xs = mapEventsToIntents events
         frameStart <- SDL.ticks
 
@@ -206,11 +231,6 @@ appLoop = do
         let enemyPosition = SDL.Rectangle (SDL.P (SDL.V2 (fromIntegral $ xPosE enemy') (fromIntegral $ yPosE enemy'))) (SDL.V2 50 50)
         let intersect = hasIntersection characterPosition enemyPosition
 
-
-
-
-        
-        -- {colidiu, inimigo}
         if intersect
           then do
             let character'' = character' { yPos = 244 }
@@ -220,10 +240,11 @@ appLoop = do
 
 
         renderEnemy renderer assets enemy'
-        renderGround renderer window assets 
+        -- renderGround renderer window assets 
+        drawMap renderer exemploMapa assets
 
         --  Delay
-        put $ GameState { window = window, renderer = renderer, assets = assets, character = character', enemy = enemy', counter = counter + 1 }
+        put $ GameState { window = window, renderer = renderer, assets = assets, character = character', enemy = enemy', counter = counter + 1, exemploMapa = exemploMapa }
 
         SDL.present renderer
         SDL.delay 16
@@ -235,8 +256,35 @@ gravityLogic c@Character { jumping = False, yPos = y, gravity = g }
   | otherwise = c { yPos = y + g }
 gravityLogic c = c
 
+
+hasCollision :: Mapa -> Character -> Bool
+hasCollision mapa character =
+  any (\(y, row) -> any (\(x, tile) -> isBlock tile && collidesWith character (x, y)) (enumerate row)) (enumerate mapa)
+  where
+    enumerate :: [a] -> [(Int, a)]
+    enumerate = zip [0..]
+
+    collidesWith :: Character -> (Int, Int) -> Bool
+    collidesWith c (blockX, blockY) =
+      let blockX' = fromIntegral blockX * blockSize
+          blockY' = fromIntegral blockY * blockSize
+          blockSize = 50 -- Tamanho dos blocos, ajuste conforme necessário
+      in xPos c < blockX' + blockSize
+          && xPos c + characterWidth > blockX'
+          && yPos c < blockY' + blockSize
+          && yPos c + characterHeight > blockY'
+          
+    isBlock :: Char -> Bool
+    isBlock tile = tile == '#'
+    
+    characterWidth = 50 -- Largura do personagem, ajuste conforme necessário
+    characterHeight = 50 -- Altura do personagem, ajuste conforme necessário
+
+
+
 isGround :: Character -> Bool
-isGround c@Character { yPos = y, yVelocity = vy, jumpHeight = jh } = y - vy - jh  >= 250  -- Altura do chão
+--  detecta se o personagem está no chão, se colidir com algum bloco
+isGround c@Character { yPos = y, yVelocity = vy, jumpHeight = jh }  = y + vy + jh >= 317
 
 
 jumpLogic :: Character -> Character
@@ -256,18 +304,31 @@ initialState = do
   screen <- SDL.getWindowSurface w
   SDL.surfaceFillRect screen Nothing (SDL.V4 maxBound maxBound maxBound maxBound)
   SDL.updateWindowSurface w
-
+  -- map <- exemploMap
   r <- SDL.createRenderer w (-1) SDL.defaultRenderer
   assets' <- mapM (SDLImage.loadTexture r) surfacePaths
-  
   return $
     GameState
       { window = w,
         renderer = r,
         assets = assets',
-        character = (Character 350 250 False 0 0 0 2),
-        enemy = (Enemy 250 250 False 0 0 2 2),
-        counter = 0
+        character = (Character 350 317 False 0 0 0 2),
+        enemy = (Enemy 250 317 False 0 0 2 2),
+        counter = 0,
+        exemploMapa =  [ "*******************",
+    "*...................",
+    "*...................",
+    "*...............................*****",
+    "*.........................****",
+    "*...................****",
+    "*...................",
+    "*...................",
+    "####################",
+    "$$$$$$$$$$$$$$$$$$$$",
+    "$$$$$$$$$$$$$$$$$$$$",
+    "$$$$$$$$$$$$$$$$$$$$",
+    "$$$$$$$$$$$$$$$$$$$$"
+  ]
       }
 
 
