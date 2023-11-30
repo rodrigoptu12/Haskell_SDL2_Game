@@ -103,22 +103,6 @@ surfacePaths = AssetMap
     tijoloWall = "./assets/Terrain/tijolo.png"
   }
 
-
--- drawMap :: (MonadIO m) => SDL.Renderer -> Mapa -> AssetMap SDL.Texture -> m ()
--- drawMap renderer mapa assets= liftIO $ do
---   let mapa' = zip [0..] mapa
---   forM_ mapa' $ \(y, linha) ->
---     forM_ (zip [0..] linha) $ \(x, char) ->
---       case char of
---         '#' -> do
---           SDL.copy renderer (ground assets) Nothing (Just $ SDL.Rectangle (SDL.P (SDL.V2 (x * 46) (y * 46))) (SDL.V2 46 46))
-
---         '$' -> do
---           SDL.copy renderer (land assets) Nothing (Just $ SDL.Rectangle (SDL.P (SDL.V2 (x * 46) (y * 46))) (SDL.V2 46 46))
---         '*' -> do
---           SDL.copy renderer (tijoloWall assets) Nothing (Just $ SDL.Rectangle (SDL.P (SDL.V2 (x * 46) (y * 46))) (SDL.V2 46 46))
---         _ -> return ()
-
 initializeMapRect :: Mapa -> IO [[Block]]
 initializeMapRect mapa = do
   let mapa' = zip [0..] mapa
@@ -140,11 +124,6 @@ drawMap renderer mapRect assets = liftIO $ do
         Land -> SDL.copy renderer (land assets) Nothing (Just $ blockRect block)
         Tijolo -> SDL.copy renderer (tijoloWall assets) Nothing (Just $ blockRect block)
         Sky -> return ()
--- hasIntersectionMap :: IO [[Block]] -> SDL.Rectangle CInt -> Bool
--- -- ingore block type = sky
--- hasIntersectionMap mapRect characterPosition = do
---   mapRect' <- mapRect
---   any (\linha -> any (\block -> blockType block /= Sky && hasIntersection (blockRect block) characterPosition) linha) mapRect'
 
 hasIntersectionMap :: IO [[Block]] -> SDL.Rectangle CInt -> IO Bool
 hasIntersectionMap mapRect characterPosition = do
@@ -154,12 +133,6 @@ hasIntersectionMap mapRect characterPosition = do
                 blockType block /= Sky && hasIntersection (blockRect block) characterPosition
               ) linha
             ) mapRect'
-
-
-
-  --  = do
-  -- mapRect' <- mapRect
-  -- any (\linha -> any (\block -> hasIntersection (blockRect block) characterPosition) linha) mapRect'
 
 
   
@@ -189,8 +162,6 @@ mapEventsToIntents = mapMaybe (payloadToIntent . SDL.eventPayload)
     payloadToIntent _                     = Nothing
 
 
-
--- ground.png 46x46, multiplicapar para toda a tela
 renderGround :: (MonadIO m) => SDL.Renderer -> SDL.Window -> AssetMap SDL.Texture -> m ()
 renderGround renderer window assets = liftIO $ do
     let groundTexture = ground assets
@@ -261,12 +232,9 @@ movingEnemy character
   | xPosE character >= 600 = character { xVelocityE = -2, xPosE = xPosE character - 2 }
   | xPosE character <= 600 && xPosE character >= 300 = character { xVelocityE = xVelocityE character, xPosE = xPosE character + xVelocityE character }
 
--- IO Bool -> Bool
 
 convertBool :: IO Bool -> Bool
 convertBool bool = unsafePerformIO bool
-
-
 
 appLoop :: StateT GameState IO ()
 appLoop = do
@@ -321,19 +289,9 @@ appLoop = do
         SDL.delay 16
         appLoop 
 
--- gravityLogic :: Character -> Bool ->Character
--- gravityLogic c isGround
---   | isGround = c
---   | otherwise = c { yPos = yPos c + gravity c  }
--- gravityLogic c isGround = c
-
--- if isGround then c { yPos = yPos c + gravity c  } else c
--- gravityLogic :: Character -> Bool ->Character
--- gravityLogic c isGround = c { yPos = yPos c + gravity c  }
-
 gravityLogic :: Character -> Bool ->Character
 gravityLogic c isGround = do
-  if isGround then c { yPos = yPos c + gravity c  } else c
+  if not isGround then c { yPos = yPos c + gravity c  } else c
 
 
 
@@ -363,32 +321,21 @@ hasCollision mapa character =
     characterHeight :: Character -> Int
     characterHeight _ = 36 -- Altura do personagem, ajuste conforme necessário
 
-
-
--- isGround :: Character -> Bool
--- --  detecta se o personagem está no chão, se colidir com algum bloco
--- isGround c@Character { yPos = y, yVelocity = vy, jumpHeight = jh }  = y + vy + jh >= 317
-
--- jumpLogic :: Bool -> Character  -> Character
--- jumpLogic _ c@Character { jumping = False } = c
--- jumpLogic _ c@Character { jumping = True, yVelocity = 0 } = c { jumping = False }
--- jumpLogic isGround c@Character { jumping = True, yVelocity = vy, xVelocity = vx, jumpHeight = jh }
---   | not (isGround) = c { yVelocity = vy - gravity c, xVelocity = vx, yPos = yPos c - vy - jh, jumpHeight = jh - 1, xPos = xPos c + xVelocity c }  -- Update horizontal position
---   | otherwise = c { jumping = False, yVelocity = 0, xVelocity = 0, jumpHeight = 0, xPos = xPos c + xVelocity c }  -- Update horizontal position
 jumpLogic :: Bool -> Character -> Character
 jumpLogic isGround c@Character { jumping = False } = c
 jumpLogic isGround c@Character { jumping = True, yVelocity = 0 } = c { jumping = False }
 jumpLogic isGround c@Character { jumping = True, yVelocity = vy, xVelocity = vx, jumpHeight = jh } =
-  if not (isGround)
-    then c { yVelocity = vy - gravity c, xVelocity = vx, xPos = xPos c + xVelocity c, yPos = yPos c - vy - jh, jumpHeight = jh - 1 }
-    else c { jumping = False, yVelocity = 0, xVelocity = 0, jumpHeight = 0, xPos = xPos c + xVelocity c, yPos = yPos c + vy }
--- jumpLogic :: Character -> Bool ->  Character
--- jumpLogic c@Character { jumping = False } = c
--- jumpLogic c@Character { jumping = True, yVelocity = 0 } = c { jumping = False }
--- jumpLogic c@Character { jumping = True, yVelocity = vy, xVelocity = vx, jumpHeight = jh } =
---     if not (isGround c)
---         then c { yVelocity = vy - gravity c, xVelocity = vx, yPos = yPos c - vy - jh, jumpHeight = jh - 1, xPos = xPos c + xVelocity c }  -- Atualiza a posição horizontal
---         else c { jumping = False, yVelocity = 0, xVelocity = 0, jumpHeight = 0, xPos = xPos c + xVelocity c }  -- Atualiza a posição horizontal
+    if isGround
+        then c { yVelocity = vy - gravity c, xVelocity = vx, yPos = yPos c - vy - jh, jumpHeight = jh - 1, xPos = xPos c + xVelocity c }  -- Atualiza a posição horizontal
+        else c { jumping = False, yVelocity = 0, xVelocity = 0, jumpHeight = 0, xPos = xPos c + xVelocity c }  -- Atualiza a posição horizontal
+
+-- jumpLogic isGround c@Character { jumping = False } = c
+-- jumpLogic isGround c@Character { jumping = True, yVelocity = 0 } = c { jumping = False }
+-- jumpLogic isGround c@Character { jumping = True, yVelocity = vy, xVelocity = vx, jumpHeight = jh } =
+--   if not (isGround)
+--     then c { yVelocity = vy - gravity c, xVelocity = vx, xPos = xPos c + xVelocity c, yPos = yPos c - vy - jh, jumpHeight = jh - 1 }
+--     else c { jumping = False, yVelocity = 0, xVelocity = 0, jumpHeight = 0, xPos = xPos c + xVelocity c, yPos = yPos c + vy }
+
 
 initialState :: IO GameState
 initialState = do
