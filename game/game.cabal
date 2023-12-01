@@ -28,6 +28,7 @@ library
       GameRectangle
       Character
       Enemy
+      Events
       Map
       Assets
       GameState

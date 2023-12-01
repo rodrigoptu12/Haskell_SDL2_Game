@@ -30,7 +30,7 @@ instance Show Enemy where
   show (Enemy x y j jh yv xv g r) = "Enemy { xPos = " ++ show x ++ ", yPos = " ++ show y ++ ", jumping = " ++ show j ++ ", jumpHeight = " ++ show jh ++ ", yVelocity = " ++ show yv ++ ", xVelocity = " ++ show xv ++ ", gravity = " ++ show g ++ ", rectangle = " ++ show r ++ " }"
 
 createEnemy :: Int -> Int -> Bool -> Int -> Int -> Int -> Int -> Enemy
-createEnemy x y j jh yv xv g = Enemy x y j jh yv xv g (SDL.Rectangle (SDL.P (SDL.V2 (fromIntegral x) (fromIntegral y))) (SDL.V2 32 32))
+createEnemy x y j jh yv xv g = Enemy x y j jh yv xv g (GR.createRectangle x y 32 32)
 
 updateEnemyXPos :: Enemy -> Int -> Enemy
 updateEnemyXPos c x = c {xPos = x, rectangle = GR.updateRectangleX (rectangle c) x}

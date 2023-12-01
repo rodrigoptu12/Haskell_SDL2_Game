@@ -58,7 +58,7 @@ hasCollided r1 r2 = (getRectangleX r1 < getRectangleX r2 + getRectangleWidth r2)
 
 -- Detect collision between one SDL.Rectangle and a list of SDL.Rectangles
 hasCollidedWithAny :: SDL.Rectangle CInt -> [SDL.Rectangle CInt] -> Bool
-hasCollidedWithAny r [] = False
+hasCollidedWithAny _ [] = False
 hasCollidedWithAny r (x:xs) = hasCollided r x || hasCollidedWithAny r xs
 
 -- Detect collision between two SDL.Rectangles and return the SDL.Rectangle that was collided with
