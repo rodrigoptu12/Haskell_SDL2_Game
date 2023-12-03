@@ -13,34 +13,23 @@ module Character
   )
 where
 
-import Foreign.C.Types (CInt)
 import GameRectangle as GR
 import Events
-
 import qualified Map as M
 import qualified SDL
-data Character = Character
-  { xPos :: Int,
-    yPos :: Int,
-    jumping :: Bool,
-    jumpHeight :: Int,
-    yVelocity :: Int,
-    xVelocity :: Int,
-    gravity :: Int,
-    rectangle :: SDL.Rectangle CInt
-  }
-  deriving (Eq)
-instance Show Character where
-  show (Character x y j jh yv xv g r) = "Character { xPos = " ++ show x ++ ", yPos = " ++ show y ++ ", jumping = " ++ show j ++ ", jumpHeight = " ++ show jh ++ ", yVelocity = " ++ show yv ++ ", xVelocity = " ++ show xv ++ ", gravity = " ++ show g ++ ", rectangle = " ++ show r ++ " }"
+import CharacterData
 
-createCharacter :: Int -> Int -> Bool -> Int -> Int -> Int -> Int -> Character
+instance Show Character where
+  show (Character x y j jh yv xv g r le ri up dow) = "Character { xPos = " ++ show x ++ ", yPos = " ++ show y ++ ", jumping = " ++ show j ++ ", jumpHeight = " ++ show jh ++ ", yVelocity = " ++ show yv ++ ", xVelocity = " ++ show xv ++ ", gravity = " ++ show g ++ ", rectangle = " ++ show r ++ " } "
+
+createCharacter :: Int -> Int -> Bool -> Int -> Int -> Int -> Int -> Bool -> Bool -> Bool -> Bool -> Character
 createCharacter x y j jh yv xv g = Character x y j jh yv xv g (GR.createRectangle x y 32 32)
 
-updateCharacterXPos :: Character -> Int -> Character
-updateCharacterXPos c x = c {xPos = x, rectangle = GR.updateRectangleX (rectangle c) x}
+updateCharacterXPos :: Character  -> Character
+updateCharacterXPos c = c {xPos = xPos c + xVelocity c, rectangle = GR.updateRectangleX (rectangle c) (xPos c + xVelocity c)}
 
-updateCharacterYPos :: Character -> Int -> Character
-updateCharacterYPos c y = c {yPos = y, rectangle = GR.updateRectangleY (rectangle c) y}
+updateCharacterYPos :: Character -> Character
+updateCharacterYPos c = c {yPos = yPos c - yVelocity c, rectangle = GR.updateRectangleY (rectangle c) (yPos c - yVelocity c)}
 
 updateCharacterJumping :: Character -> Bool -> Character
 updateCharacterJumping c j = c {jumping = j}
@@ -59,51 +48,44 @@ updateCharacterGravity c g = c {gravity = g}
 
 gravityLogic :: Character -> [M.Block] -> Character
 gravityLogic c blocks 
-  | not collided = updateCharacterYPos c (yPos c + gravity c)
-  | otherwise = c
-  where bRects = M.getCollisionBlockRectangles blocks
+  | not (isGrounded c blocks)  = updateCharacterYPos c' {yVelocity = yVelocity c' - gravity c'}
+  | otherwise = c {yVelocity = 0}
+  where groundBlocks = M.getCollisionGroundBlocks blocks
+        bRects = M.getCollisionBlockRectangles groundBlocks
+        cRect = rectangle c
+        collided = GR.hasCollidedWithAny cRect bRects
+        c' = if collided then c {yVelocity = 0} else c
+
+
+isGrounded :: Character -> [M.Block] -> Bool
+isGrounded c blocks 
+  | not collided = False
+  | otherwise = True
+  where groundBlocks = M.getCollisionGroundBlocks blocks
+        bRects = M.getCollisionBlockRectangles groundBlocks
         cRect = rectangle c
         collided = GR.hasCollidedWithAny cRect bRects
 
 moveLogic :: Character -> [M.Block] -> GameEvent -> Character
--- considere direita ou esquerda
-moveLogic c blocks g
-  | not collided = if g == LeftPressed then updateCharacterXPos c (xPos c - xVelocity c) else updateCharacterXPos c (xPos c + xVelocity c)
-  | otherwise = c
-  where 
-        groundBlocks = M.getCollisionGroundBlocks blocks
-        bRects = M.getCollisionBlockRectangles groundBlocks
-        cRect = rectangle c
-        collided = GR.hasCollidedWithAny cRect bRects
-  
-        
-        --  se jumping == true e jumpHeight > 0 entao yPos = yPos - yVelocity e jumpHeight = jumpHeight - 1
-        --  se jumping == true e jumpHeight == 0 entao jumping = false
-jumpLogic :: Character -> [M.Block] -> Character
-jumpLogic c blocks 
-  | jumping c && jumpHeight c > 0 =  updateCharacterYPos c {jumping = True, jumpHeight = jumpHeight c - 1} (yPos c - yVelocity c) 
-  | otherwise = c {jumping = False, jumpHeight = 10}
-  where bRects = M.getCollisionBlockRectangles blocks
-        cRect = rectangle c
-        collided = GR.hasCollidedWithAny cRect bRects
+moveLogic c blocks g = if g == LeftPressed then updateCharacterXPos c {xVelocity = -4} else if g == RightPressed then updateCharacterXPos c {xVelocity = 4} else c
 
-updateCharacterWithEvent :: Character -> GameEvent -> [M.Block] -> Character
-updateCharacterWithEvent c g blocks = case g of
-  UpPressed -> jumpLogic shouldJump  blocks  
-  LeftPressed -> moveLogic c' blocks g
-  RightPressed -> moveLogic c' blocks g
-  DownPressed -> c'
-  _ ->  c'
-  where 
+jumpLogic :: [M.Block] -> Character -> Character
+jumpLogic blocks c@Character {jumping = True, jumpHeight = jh, yVelocity = vy, xVelocity = vx} =
+  if vy > 0
+    then let c' = updateCharacterXPos c 
+          in updateCharacterYPos c' {jumpHeight = 10, yVelocity = vy - 1} 
+    else updateCharacterJumping c False
+jumpLogic blocks c@Character {jumping = False} = c 
+
+
+
+updateCharacterWithEvents :: Character -> [M.Block] -> Character
+updateCharacterWithEvents c blocks 
+  | (upPressed c' && isGrounded c' blocks) = jumpLogic blocks shouldJump
+  | rightPressed c' = moveLogic c' blocks RightPressed
+  | leftPressed c' = moveLogic c' blocks LeftPressed
+  | downPressed c' = c'
+  | otherwise = c'
+  where
     c' = gravityLogic c blocks
-    groundBlocks = M.getCollisionGroundBlocks blocks
-    bRects = M.getCollisionBlockRectangles groundBlocks
-    cRect = rectangle c
-    isGround = GR.hasCollidedWithAny cRect bRects
-    shouldJump = if UpPressed == g then if jumping c' && isGround then c' else c' {jumping = True, jumpHeight = 10} else c'
-
-     
-
-updateCharacterWithEvents :: Character -> [GameEvent] -> [M.Block] -> Character
-updateCharacterWithEvents c [] blocks = updateCharacterWithEvent c NotImplemented blocks
-updateCharacterWithEvents c (x:xs) blocks = updateCharacterWithEvents (updateCharacterWithEvent c x blocks) xs blocks
+    shouldJump = if isGrounded c' blocks && not (jumping c' == True) then (updateCharacterJumping c'{yVelocity = 20} True)  else c'

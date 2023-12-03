@@ -8,19 +8,18 @@ module GameState (
 import qualified SDL
 import qualified SDL.Image as SDLImage
 
--- import Control.Monad (mapM)
-
+import qualified CharacterData as CD
 import Character
 import Enemy
 import Assets
 import Map
-
+-- import Events  
 data GameState = GameState
   { 
     window :: SDL.Window,
     renderer :: SDL.Renderer,
     assets :: AssetMap SDL.Texture,
-    character :: Character,
+    character :: CD.Character,
     enemy :: Enemy,
     gameMap :: [Block]
   }
@@ -37,7 +36,7 @@ initialState = do
     window = w,
     renderer = r,
     assets = assets',
-    character = createCharacter 350 317 False 10 10 2 3,
+    character = createCharacter 350 317 False 10 10 1 3 False False False False,
     enemy = createEnemy 250 317 False 0 0 2 2,
     gameMap = createMapFromShape mapShape
   }

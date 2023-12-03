@@ -9,9 +9,7 @@ import GameState
 import Assets
 import Render
 import Map
-import Events
-
-
+import qualified Events as E
 
 appLoop :: GameState -> IO ()
 appLoop state = do
@@ -21,22 +19,17 @@ appLoop state = do
     then return ()
     else do
 
-        let events' = sdlEventsToGameEvents events
-
-        print events'
-
         let (GameState window renderer assets character enemy gameMap) = state
+        let movement = E.sdlEventsToGameEvents events character
 
         drawMap renderer gameMap assets
-        -- mover para o render
-        
-        let character' = C.updateCharacterWithEvents character events' gameMap 
-        -- let character'' = C.gravityLogic character' gameMap
-        -- print character'
+
+        let character' = C.updateCharacterWithEvents movement gameMap 
+
         drawCharacter renderer character'  (maskDude assets)
 
         SDL.present renderer
-        SDL.delay 16
+        SDL.delay 41
         appLoop state {character = character'}
 
 game :: IO ()
