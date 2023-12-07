@@ -16,7 +16,8 @@ data Character = Character
     leftPressed :: Bool,
     rightPressed :: Bool,
     upPressed :: Bool,
-    downPressed :: Bool
+    downPressed :: Bool,
+    score :: Int
   }
   deriving (Eq)
   

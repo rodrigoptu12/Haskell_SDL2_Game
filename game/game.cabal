@@ -52,6 +52,7 @@ library
     , sdl2-ttf
     , text == 2.0.2
     , containers
+    , bytestring
   default-language: Haskell2010
 
 executable game-exe

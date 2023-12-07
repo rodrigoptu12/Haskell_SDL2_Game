@@ -9,6 +9,7 @@ module Character
     updateCharacterXVelocity,
     updateCharacterGravity,
     updateCharacterWithEvents, 
+    updateCharacterScore,
     gravityLogic,
   )
 where
@@ -20,9 +21,9 @@ import qualified SDL
 import CharacterData
 
 instance Show Character where
-  show (Character x y j jh yv xv g r le ri up dow) = "Character { xPos = " ++ show x ++ ", yPos = " ++ show y ++ ", jumping = " ++ show j ++ ", jumpHeight = " ++ show jh ++ ", yVelocity = " ++ show yv ++ ", xVelocity = " ++ show xv ++ ", gravity = " ++ show g ++ ", rectangle = " ++ show r ++ " } "
+  show (Character x y j jh yv xv g r le ri up dow p) = "Character { xPos = " ++ show x ++ ", yPos = " ++ show y ++ ", jumping = " ++ show j ++ ", jumpHeight = " ++ show jh ++ ", yVelocity = " ++ show yv ++ ", xVelocity = " ++ show xv ++ ", gravity = " ++ show g ++ ", rectangle = " ++ show r ++ " } "
 
-createCharacter :: Int -> Int -> Bool -> Int -> Int -> Int -> Int -> Bool -> Bool -> Bool -> Bool -> Character
+createCharacter :: Int -> Int -> Bool -> Int -> Int -> Int -> Int -> Bool -> Bool -> Bool -> Bool -> Int -> Character
 createCharacter x y j jh yv xv g = Character x y j jh yv xv g (GR.createRectangle x y 32 32)
 
 updateCharacterXPos :: Character  -> Character
@@ -45,6 +46,9 @@ updateCharacterXVelocity c xv = c {xVelocity = xv}
 
 updateCharacterGravity :: Character -> Int -> Character
 updateCharacterGravity c g = c {gravity = g}
+
+updateCharacterScore :: Character  -> Character
+updateCharacterScore c  = c {score = score c + 1}
 
 gravityLogic :: Character -> [M.Block] -> Character
 gravityLogic c blocks 
@@ -91,4 +95,4 @@ updateCharacterWithEvents c blocks
   where
     c' = gravityLogic c blocks
     shouldJump = if isGrounded c' blocks && not (jumping c' == True) then (updateCharacterJumping c'{yVelocity = 20} True)  else c'
-    
+
