@@ -35,6 +35,7 @@ library
       Game
       Render
       CharacterData
+      FontGame
   other-modules:
       Paths_game
   autogen-modules:

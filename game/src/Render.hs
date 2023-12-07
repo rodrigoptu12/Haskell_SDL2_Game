@@ -44,3 +44,4 @@ drawCharacter :: (MonadIO m) => SDL.Renderer -> Character'.Character -> SDL.Text
 drawCharacter renderer character texture = copy renderer texture Nothing (Just $ Character'.rectangle character)
 
 
+
