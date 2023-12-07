@@ -77,8 +77,10 @@ jumpLogic blocks c@Character {jumping = True, jumpHeight = jh, yVelocity = vy, x
     else updateCharacterJumping c False
 jumpLogic blocks c@Character {jumping = False} = c 
 
-
-
+applePoint :: Character -> Character
+-- se colidir com o bloco apple, ele substitui pelo bloco background
+-- block type == apple
+applePoint  c = c
 updateCharacterWithEvents :: Character -> [M.Block] -> Character
 updateCharacterWithEvents c blocks 
   | (upPressed c' && isGrounded c' blocks) = jumpLogic blocks shouldJump
@@ -89,3 +91,4 @@ updateCharacterWithEvents c blocks
   where
     c' = gravityLogic c blocks
     shouldJump = if isGrounded c' blocks && not (jumping c' == True) then (updateCharacterJumping c'{yVelocity = 20} True)  else c'
+    

@@ -10,6 +10,7 @@ module GameRectangle(
   createRectangle,
   hasCollided,
   hasCollidedWithAny,
+  hasCollidedWithApple,
   hasCollidedWith
 ) where
 
@@ -60,6 +61,18 @@ hasCollided r1 r2 = (getRectangleX r1 < getRectangleX r2 + getRectangleWidth r2)
 hasCollidedWithAny :: SDL.Rectangle CInt -> [SDL.Rectangle CInt] -> Bool
 hasCollidedWithAny _ [] = False
 hasCollidedWithAny r (x:xs) = hasCollided r x || hasCollidedWithAny r xs
+
+
+hasCollidedWithApple :: SDL.Rectangle CInt -> [SDL.Rectangle CInt] -> (Bool, SDL.Rectangle CInt)
+hasCollidedWithApple _ [] = (False, SDL.Rectangle (SDL.P (SDL.V2 0 0)) (SDL.V2 0 0))
+hasCollidedWithApple r (x:xs) =
+  if hasCollided r x
+    then (True, x)
+    else hasCollidedWithApple r xs
+
+
+
+
 
 -- Detect collision between two SDL.Rectangles and return the SDL.Rectangle that was collided with
 hasCollidedWith :: SDL.Rectangle CInt -> [SDL.Rectangle CInt] -> Maybe (SDL.Rectangle CInt)

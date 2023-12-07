@@ -8,17 +8,19 @@ module Map(
   getCollisionBlocks,
   getCollisionBlockRectangles,
   getCollisionGroundBlocks,
+  getCollisionAppleBlocks,
   getMapMaxX,
   getMapMaxY,
   getMapMinX,
-  getMapMinY
+  getMapMinY,
+  removeAppleBlock
 ) where
 
 import Foreign.C.Types (CInt)
 import qualified SDL
 import GameRectangle as GR
 
-data BlockType = Ground | Land | Brick | NonCollisionBlock deriving (Eq, Show)
+data BlockType = Ground | Land | Brick | Apple | NonCollisionBlock | Background deriving (Eq, Show)
 
 data Block = Block
   { 
@@ -28,13 +30,16 @@ data Block = Block
   deriving (Eq, Show)
 
 createBlock :: BlockType -> Int -> Int -> Block
-createBlock bt x y = Block bt (GR.createRectangle x y 50 50)
+createBlock bt x y 
+  | bt == Apple = Block bt (GR.createRectangle x y 20 20)
+  | otherwise = Block bt (GR.createRectangle x y 50 50) 
 
 blockForSymbol :: Char -> BlockType
 blockForSymbol '*' = Brick
 blockForSymbol '#' = Ground
 blockForSymbol '$' = Land
 blockForSymbol '.' = NonCollisionBlock
+blockForSymbol 'A' = Apple
 blockForSymbol _   = NonCollisionBlock -- Default to NonCollisionBlock for unknown symbols
 
 
@@ -43,12 +48,12 @@ mapShape :: [[Char]]
 mapShape = 
   [ "**************************************",
     "*...................................**",
-    "*...................................**",
+    "*......................A............**",
     "*...............................******",
-    "*.........................****......**",
-    "*...............#...................**",
+    "*...................A.....****..A...**",
+    "*..............A#............A......**",
     "*..............#....****............**",
-    "*.............#.....................**",
+    "*.A...A.......#.....A.......A....A..**",
     "############.##########################",
     "$$$$$$$$$$$$.$$$$$$$$$$$$$$$$$$$$$$$$$$",
     "$$$$$$$$$$$$.$$$$$$$$$$$$$$$$$$$$$$$$$$",
@@ -85,6 +90,8 @@ getCollisionBlocks = filter (\b -> blockType b /= NonCollisionBlock)
 getCollisionGroundBlocks :: [Block] -> [Block]
 getCollisionGroundBlocks  = filter (\b -> blockType b == Ground) . getCollisionBlocks
 
+getCollisionAppleBlocks :: [Block] -> [Block]
+getCollisionAppleBlocks  = filter (\b -> blockType b == Apple) . getCollisionBlocks
 
 getCollisionBlockRectangles :: [Block] -> [SDL.Rectangle CInt]
 getCollisionBlockRectangles = map rectangle . getCollisionBlocks
@@ -100,5 +107,21 @@ getMapMinX = minimum . map (GR.getRectangleX . rectangle)
 
 getMapMinY :: [Block] -> Int
 getMapMinY = minimum . map (GR.getRectangleY . rectangle)
+
+removeAppleBlock :: SDL.Rectangle CInt -> [Block] -> [Block]
+removeAppleBlock block blocks = map transformBlock blocks
+  where
+    transformBlock b
+      | rectangle b == block = b { blockType = NonCollisionBlock, rectangle = transformRectangle (rectangle b) }
+      | otherwise = b
+
+-- Função auxiliar para transformar o retângulo
+transformRectangle :: SDL.Rectangle CInt -> SDL.Rectangle CInt
+transformRectangle r = SDL.Rectangle (SDL.P (SDL.V2 x y)) (SDL.V2 50 50)
+  where
+    x = fromIntegral $ getRectangleX r
+    y = fromIntegral $ getRectangleY r
+
+
 
 
