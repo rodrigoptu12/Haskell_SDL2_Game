@@ -24,7 +24,7 @@ instance Show Character where
   show (Character x y j jh yv xv g r le ri up dow p) = "Character { xPos = " ++ show x ++ ", yPos = " ++ show y ++ ", jumping = " ++ show j ++ ", jumpHeight = " ++ show jh ++ ", yVelocity = " ++ show yv ++ ", xVelocity = " ++ show xv ++ ", gravity = " ++ show g ++ ", rectangle = " ++ show r ++ " } "
 
 createCharacter :: Int -> Int -> Bool -> Int -> Int -> Int -> Int -> Bool -> Bool -> Bool -> Bool -> Int -> Character
-createCharacter x y j jh yv xv g = Character x y j jh yv xv g (GR.createRectangle x y 32 32)
+createCharacter x y j jh yv xv g = Character x y j jh yv xv g (GR.createRectangle x y 50 50)
 
 updateCharacterXPos :: Character  -> Character
 updateCharacterXPos c = c {xPos = xPos c + xVelocity c, rectangle = GR.updateRectangleX (rectangle c) (xPos c + xVelocity c)}
@@ -71,13 +71,13 @@ isGrounded c blocks
         collided = GR.hasCollidedWithAny cRect bRects
 
 moveLogic :: Character -> [M.Block] -> GameEvent -> Character
-moveLogic c blocks g = if g == LeftPressed then updateCharacterXPos c {xVelocity = -4} else if g == RightPressed then updateCharacterXPos c {xVelocity = 4} else c
+moveLogic c blocks g = if g == LeftPressed then updateCharacterXPos c {xVelocity = - 6}else if g == RightPressed then updateCharacterXPos c {xVelocity = 6} else c
 
 jumpLogic :: [M.Block] -> Character -> Character
 jumpLogic blocks c@Character {jumping = True, jumpHeight = jh, yVelocity = vy, xVelocity = vx} =
   if vy > 0
     then let c' = updateCharacterXPos c 
-          in updateCharacterYPos c' {jumpHeight = 10, yVelocity = vy - 1} 
+          in updateCharacterYPos c' {jumpHeight = 15, yVelocity = vy - 1} 
     else updateCharacterJumping c False
 jumpLogic blocks c@Character {jumping = False} = c 
 

@@ -1,6 +1,7 @@
 module Render (
   drawMap,
-  drawCharacter
+  drawCharacter,
+  drawEnemy
 ) where
 
 import Map
@@ -13,6 +14,7 @@ import Foreign.C.Types (CInt)
 import qualified Character as Character'
 import qualified Map as Map'
 import qualified GameRectangle as GR
+import qualified Enemy as Enemy
 --  font  ./assets2try/lazy.ttf
 
 
@@ -24,6 +26,7 @@ drawMap renderer blocks assets =
               Land -> land assets
               Brick -> brick assets
               Apple -> apple assets
+              Enemy -> backGround assets
               NonCollisionBlock -> backGround assets
         -- se texture == apple assets render apple e background
         if texture == apple assets then do
@@ -43,5 +46,6 @@ drawMap renderer blocks assets =
 drawCharacter :: (MonadIO m) => SDL.Renderer -> Character'.Character -> SDL.Texture -> m ()
 drawCharacter renderer character texture = copy renderer texture Nothing (Just $ Character'.rectangle character)
 
-
+drawEnemy :: (MonadIO m) => SDL.Renderer -> Enemy.Enemy -> SDL.Texture -> m ()
+drawEnemy renderer enemy texture = copy renderer texture Nothing (Just $ Enemy.rectangle enemy)
 

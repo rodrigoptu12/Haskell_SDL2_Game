@@ -302,7 +302,7 @@ hasCollision mapa character =
 
     collidesWith :: Character -> (Int, Int) -> Bool
     collidesWith c (blockX, blockY) =
-      let blockSize = 46 -- Tamanho dos blocos, ajuste conforme necessário
+      let blockSize = 50 -- Tamanho dos blocos, ajuste conforme necessário
           blockX' = fromIntegral blockX * blockSize
           blockY' = fromIntegral blockY * blockSize
       in xPos c < blockX' + blockSize
@@ -314,10 +314,10 @@ hasCollision mapa character =
     isBlock tile = tile == '#' || tile == '$' || tile == '*'
     
     characterWidth :: Character -> Int
-    characterWidth _ = 36 -- Largura do personagem, ajuste conforme necessário
+    characterWidth _ = 50 -- Largura do personagem, ajuste conforme necessário
     
     characterHeight :: Character -> Int
-    characterHeight _ = 36 -- Altura do personagem, ajuste conforme necessário
+    characterHeight _ = 50 -- Altura do personagem, ajuste conforme necessário
 
 jumpLogic :: Bool -> Character -> Character
 jumpLogic isGround c@Character { jumping = False } = c

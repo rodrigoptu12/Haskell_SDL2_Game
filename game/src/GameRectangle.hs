@@ -1,4 +1,5 @@
 module GameRectangle(
+  Side (..),
   getRectangleX,
   getRectangleY,
   getRectangleWidth,
@@ -11,7 +12,9 @@ module GameRectangle(
   hasCollided,
   hasCollidedWithAny,
   hasCollidedWithApple,
-  hasCollidedWith
+  hasCollidedWith,
+  isNear,
+  hasCollidedWithAnyRects,
 ) where
 
 import Foreign.C.Types (CInt)
@@ -71,10 +74,61 @@ hasCollidedWithApple r (x:xs) =
     else hasCollidedWithApple r xs
 
 
-
+-- block is near (margin 5)
+isNear :: SDL.Rectangle CInt -> SDL.Rectangle CInt -> Bool
+isNear r1 r2 = (getRectangleX r1 < getRectangleX r2 + getRectangleWidth r2 + 5) && (getRectangleX r1 + getRectangleWidth r1 > getRectangleX r2 - 5) && (getRectangleY r1 < getRectangleY r2 + getRectangleHeight r2 + 5) && (getRectangleY r1 + getRectangleHeight r1 > getRectangleY r2 - 5)
 
 
 -- Detect collision between two SDL.Rectangles and return the SDL.Rectangle that was collided with
 hasCollidedWith :: SDL.Rectangle CInt -> [SDL.Rectangle CInt] -> Maybe (SDL.Rectangle CInt)
 hasCollidedWith _ [] = Nothing
 hasCollidedWith r (x:xs) = if hasCollided r x then Just x else hasCollidedWith r xs
+
+
+-- Rectangle side collision detection
+
+data Side = TopSide | BottomSide | LeftSide | RightSide deriving (Eq, Show)
+
+data SideCollided = SideCollided {
+  collidedLeft :: Bool,
+  collidedRight :: Bool,
+  collidedTop :: Bool,
+  collidedBottom :: Bool
+} deriving (Eq, Show)
+
+
+
+hasCollidedLeft :: SDL.Rectangle CInt -> SDL.Rectangle CInt -> Bool
+hasCollidedLeft r1 r2 = (getRectangleX r1 + getRectangleWidth r1 >= getRectangleX r2)
+
+hasCollidedRight :: SDL.Rectangle CInt -> SDL.Rectangle CInt -> Bool
+hasCollidedRight r1 r2 = (getRectangleX r1 < getRectangleX r2 + getRectangleWidth r2)
+
+hasCollidedTop :: SDL.Rectangle CInt -> SDL.Rectangle CInt -> Bool
+hasCollidedTop r1 r2 = (getRectangleY r1 + getRectangleHeight r1 > getRectangleY r2)
+
+hasCollidedBottom :: SDL.Rectangle CInt -> SDL.Rectangle CInt -> Bool
+hasCollidedBottom r1 r2 = (getRectangleY r1 < getRectangleY r2 + getRectangleHeight r2)
+
+hasCollidedWith' :: SDL.Rectangle CInt -> SDL.Rectangle CInt -> SideCollided
+hasCollidedWith' r1 r2 = SideCollided (hasCollidedLeft r1 r2) (hasCollidedRight r1 r2) (hasCollidedTop r1 r2) (hasCollidedBottom r1 r2)
+
+hasCollidedWithAnyRects :: SDL.Rectangle CInt -> [SDL.Rectangle CInt] -> [SideCollided]
+hasCollidedWithAnyRects _ [] = []
+hasCollidedWithAnyRects r (x:xs) = hasCollidedWith' r x : hasCollidedWithAnyRects r xs
+
+
+
+
+
+
+data CollisionSide = NoCollision | TopCollision | BottomCollision | LeftCollision | RightCollision deriving (Eq, Show)
+
+
+
+
+-- data CollisionSide = NoCollision | TopCollision | BottomCollision | LeftCollision | RightCollision deriving (Eq, Show)
+
+data Line = Line { startX :: SDL.Rectangle CInt, startY :: SDL.Rectangle CInt, endX :: SDL.Rectangle CInt, endY :: SDL.Rectangle CInt }
+
+

@@ -12,7 +12,7 @@ import Map
 import qualified Events as E
 import qualified GameRectangle as GR
 import FontGame
-
+import Enemy
 
 import qualified SDL.Font as Font
 import qualified SDL.Vect as Vect
@@ -31,7 +31,7 @@ appLoop state = do
     then return ()
     else do
 
-        let (GameState window renderer assets character enemy gameMap) = state
+        let (GameState window renderer assets character  gameMap font enemys) = state
 
 
         ------- TEM QUE MOVER Apple --------
@@ -47,15 +47,30 @@ appLoop state = do
         let character'' = C.updateCharacterWithEvents movement gameMap' 
         drawCharacter renderer character''  (maskDude assets)
 
+
+        -- -------------------------------
+        -- let blocksrect = getBlocksAroundCharacter (C.rectangle character'') gameMap'
+        -- let rectBlock = getCollisionBlockRectangles blocksrect
+        -- let teste = GR.hasCollidedCross' (C.rectangle character'') rectBlock
+    
+        -- print teste
+        -- -------------------------------
         ------- TEM QUE MOVER Score --------
-        font <- loadFont "./assets2try/fast99.ttf" 24
         textTexture <- renderText font ("Score:    " ++ show (C.score character')) (SDL.V4 255 255 255 255) renderer
         drawTexture renderer textTexture
         ------------------------------------
 
+        -- enemy
+        let enemys' = map (\enemy -> updateEnemy enemy) enemys
+        -- render, draw enemy
+        mapM_ (\enemy -> drawEnemy renderer enemy (pinkMan assets)) enemys'
+
+
+
+
         SDL.present renderer
-        SDL.delay 30
-        appLoop state {character = character'', gameMap = gameMap'}
+        SDL.delay 16
+        appLoop state {character = character'', gameMap = gameMap', enemys = enemys'}
 
 
 game :: IO ()

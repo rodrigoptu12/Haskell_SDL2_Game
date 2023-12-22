@@ -17,6 +17,7 @@ data AssetMap a = AssetMap
   , pinkMan :: a
   , brick :: a
   , apple :: a
+  , enemy :: a
   } deriving (Foldable, Traversable, Functor)
 
 surfacePaths :: AssetMap FilePath
@@ -28,5 +29,6 @@ surfacePaths =
       land = "./assets/Terrain/land.png",
       pinkMan = "./assets/Main Characters/Pink Man/Jump (32x32).png",
       brick = "./assets/Terrain/tijolo.png",
-      apple = "./assets/Items/Fruits/Apple.png"
+      apple = "./assets/Items/Fruits/Apple.png",
+      enemy = "./assets/Main Characters/Ninja Frog/Jump (32x32).png"
     }

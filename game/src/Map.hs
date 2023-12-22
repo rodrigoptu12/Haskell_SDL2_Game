@@ -9,18 +9,20 @@ module Map(
   getCollisionBlockRectangles,
   getCollisionGroundBlocks,
   getCollisionAppleBlocks,
+  getBlocksAroundCharacter,
   getMapMaxX,
   getMapMaxY,
   getMapMinX,
   getMapMinY,
-  removeAppleBlock
+  removeAppleBlock,
+  getRectangleEnemy
 ) where
 
 import Foreign.C.Types (CInt)
 import qualified SDL
 import GameRectangle as GR
 
-data BlockType = Ground | Land | Brick | Apple | NonCollisionBlock | Background deriving (Eq, Show)
+data BlockType = Ground | Land | Brick | Apple | NonCollisionBlock | Background | Enemy  deriving (Eq, Show)
 
 data Block = Block
   { 
@@ -40,29 +42,51 @@ blockForSymbol '#' = Ground
 blockForSymbol '$' = Land
 blockForSymbol '.' = NonCollisionBlock
 blockForSymbol 'A' = Apple
+blockForSymbol 'I' = Enemy
 blockForSymbol _   = NonCollisionBlock -- Default to NonCollisionBlock for unknown symbols
 
 
 -- Map array * = Brick, # = Ground, $ = Land, . = NonCollisionBlock
 mapShape :: [[Char]]
-mapShape = 
-  [ "**************************************",
-    "*...................................**",
-    "*......................A............**",
-    "*...............................******",
-    "*...................A.....****..A...**",
-    "*..............A#............A......**",
-    "*..............#....****............**",
-    "*.A...A.......#.....A.......A....A..**",
-    "############.##########################",
-    "$$$$$$$$$$$$.$$$$$$$$$$$$$$$$$$$$$$$$$$",
-    "$$$$$$$$$$$$.$$$$$$$$$$$$$$$$$$$$$$$$$$",
-    "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$",
-    "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$",
-    "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$",
-    "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+-- mapShape = 
+--   [ "**************************************",
+--     "*...................................**",
+--     "*......................A............**",
+--     "*...............................******",
+--     "*...................A.....****..A...**",
+--     "*..............A#............A......**",
+--     "*..............#....****............**",
+--     "*.A...A.......#.....A.......A....A..**",
+--     "############.##########################",
+--     "$$$$$$$$$$$$.$$$$$$$$$$$$$$$$$$$$$$$$$$",
+--     "$$$$$$$$$$$$.$$$$$$$$$$$$$$$$$$$$$$$$$$",
+--     "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$",
+--     "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$",
+--     "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$",
+--     "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$"
+--   ]
+mapShape =
+  [ ".......................................",
+    "#########....................#####.....",
+    "*********######A..I..A#######*****.....",
+    ".........******#######*******........A.",
+    "..AA...........*******.......A.........",
+    "..AA.........................####......",
+    "##...........................****..####",
+    "**#######.A........................****",
+    "..*******#######..#..................A.",
+    ".........*******....#######....I.....A.",
+    ".................A..*******############",
+    "...........................************",
+    ".....................................AA",
+    "..............I....A.................A.",
+    "...........A########................###",
+    "......A#####********######...I...###***",
+    "...####*****........******#######***...",
+    "...****...........A.......*******......",
+    "..............A...I......A.............",
+    "#######################################"
   ]
-
 createBlockForColumn :: Int -> (Int, Char) -> [Block]
 createBlockForColumn rowIndex (colIndex, symbol) =
   let x = colIndex * 50
@@ -95,6 +119,24 @@ getCollisionAppleBlocks  = filter (\b -> blockType b == Apple) . getCollisionBlo
 
 getCollisionBlockRectangles :: [Block] -> [SDL.Rectangle CInt]
 getCollisionBlockRectangles = map rectangle . getCollisionBlocks
+
+getBlocksAroundCharacter :: SDL.Rectangle CInt -> [Block] -> [Block]
+getBlocksAroundCharacter characterRectangle blocks = filter (\b -> GR.isNear characterRectangle (rectangle b)) blocks
+
+getRectangleEnemy :: [Block] -> [SDL.Rectangle CInt]
+getRectangleEnemy = do
+  let getRectangle = map rectangle . getCollisionBlocks
+  let getEnemy = filter (\b -> blockType b == Enemy) . getCollisionBlocks
+  getRectangle . getEnemy
+  
+  
+  --filter (\b -> blockType b == Enemy) . getCollisionBlocks . getRectangle
+
+
+
+getRectangle:: [Block] -> [SDL.Rectangle CInt]
+getRectangle = map rectangle . getCollisionBlocks
+
 
 getMapMaxX :: [Block] -> Int
 getMapMaxX = maximum . map (GR.getRectangleX . rectangle)
