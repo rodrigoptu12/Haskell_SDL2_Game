@@ -18,6 +18,7 @@ data Character = Character
     upPressed :: Bool,
     downPressed :: Bool,
     score :: Int
+
   }
   deriving (Eq)
   

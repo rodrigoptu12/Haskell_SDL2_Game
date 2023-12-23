@@ -31,15 +31,34 @@ appLoop state = do
     then return ()
     else do
 
-        let (GameState window renderer assets character  gameMap font enemys) = state
+        let (GameState window renderer assets character  gameMap font enemys enemysMaps maps nextMap hitEnemy ) = state
+
+
+        -- verify position character 1800 900
+        let characterX = C.xPos character
+        let characterY = C.yPos character
+
+        -- if character X collide with area betweenX (1790 - 1860) and Y (890 - 960) then change map
+        let finish = if (characterX >= 1790 && characterX <= 1860 && characterY >= 890 && characterY <= 960) then True else False
+        -- let gameMapCurrent = if finish then maps !! (1) else gameMap
+        let gameMapCurrent = if finish then 
+          maps !! nextMap
+        else gameMap
+        let characterPos = if finish  then character {
+          C.xPos = 10, 
+          C.yPos = 10, 
+          C.score = 0, 
+          C.rectangle = GR.updateRectangleY (GR.updateRectangleX (C.rectangle character) 10) 10 
+          } else character
+
 
 
         ------- TEM QUE MOVER Apple --------
-        let getAppleBlocks = getCollisionAppleBlocks gameMap
+        let getAppleBlocks = getCollisionAppleBlocks gameMapCurrent
         let getAppleRectangles = getCollisionBlockRectangles getAppleBlocks
-        let hasAppleCollided = GR.hasCollidedWithApple (C.rectangle character)  getAppleRectangles 
-        let character' = if  (fst hasAppleCollided) then C.updateCharacterScore character else character
-        let gameMap' = if (fst hasAppleCollided) then removeAppleBlock (snd hasAppleCollided) gameMap else gameMap
+        let hasAppleCollided = GR.hasCollidedWithApple (C.rectangle characterPos)  getAppleRectangles 
+        let character' = if  (fst hasAppleCollided) then C.updateCharacterScore characterPos else characterPos
+        let gameMap' = if (fst hasAppleCollided) then removeAppleBlock (snd hasAppleCollided) gameMapCurrent else gameMapCurrent
         -------------------------------------
 
         let movement = E.sdlEventsToGameEvents events character'
@@ -47,26 +66,15 @@ appLoop state = do
         let character'' = C.updateCharacterWithEvents movement gameMap' 
         drawCharacter renderer character''  (maskDude assets)
 
-
-        -- -------------------------------
-        -- let blocksrect = getBlocksAroundCharacter (C.rectangle character'') gameMap'
-        -- let rectBlock = getCollisionBlockRectangles blocksrect
-        -- let teste = GR.hasCollidedCross' (C.rectangle character'') rectBlock
-    
-        -- print teste
-        -- -------------------------------
         ------- TEM QUE MOVER Score --------
         textTexture <- renderText font ("Score:    " ++ show (C.score character')) (SDL.V4 255 255 255 255) renderer
         drawTexture renderer textTexture
         ------------------------------------
 
-        -- enemy
+        -- enemy --- 
         let enemys' = map (\enemy -> updateEnemy enemy) enemys
-        -- render, draw enemy
         mapM_ (\enemy -> drawEnemy renderer enemy (pinkMan assets)) enemys'
-
-
-
+        ------------------------------------
 
         SDL.present renderer
         SDL.delay 16
@@ -78,8 +86,8 @@ game = do
   state <- initialState
   
   -- print map X and Y
-  putStrLn $ "Map Max X: " ++ show (getMapMaxX $ gameMap state)
-  putStrLn $ "Map Max Y: " ++ show (getMapMaxY $ gameMap state)
+  -- putStrLn $ "Map Max X: " ++ show (getMapMaxX $ gameMap state)
+  -- putStrLn $ "Map Max Y: " ++ show (getMapMaxY $ gameMap state)
 
   appLoop state
 

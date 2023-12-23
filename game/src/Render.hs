@@ -27,6 +27,7 @@ drawMap renderer blocks assets =
               Brick -> brick assets
               Apple -> apple assets
               Enemy -> backGround assets
+              Finish -> virtualGuy assets
               NonCollisionBlock -> backGround assets
         -- se texture == apple assets render apple e background
         if texture == apple assets then do

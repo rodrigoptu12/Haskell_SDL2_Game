@@ -22,10 +22,13 @@ data GameState = GameState
     renderer :: SDL.Renderer,
     assets :: AssetMap SDL.Texture,
     character :: CD.Character,
-    -- enemy :: Enemy,
     gameMap :: [Block],
     font :: Font.Font,
-    enemys :: [Enemy]
+    enemys :: [Enemy],
+    enemysMaps :: [[Enemy]],
+    maps:: [[Block]],
+    nextMap :: Int,
+    hitEnemy :: Bool
   }
 
 initialState :: IO GameState
@@ -37,27 +40,23 @@ initialState = do
   r <- SDL.createRenderer w (-1) SDL.defaultRenderer
   assets' <- mapM (SDLImage.loadTexture r) surfacePaths
   font <- loadFont "./assets2try/fast99.ttf" 24
-  let map' =  createMapFromShape mapShape
-  -- getEnemyBlocks <- getCollisionEnemyBlocks map
-  let enemysRects =  getRectangleEnemy map'
-  -- createEnemy :: Int -> Int -> Bool -> Int -> Int -> Int -> Int -> SDL.Rectangle CInt -> Enemy
-  -- createEnemy x y j jh yv xv g rect= Enemy x y j jh yv xv g rect
-  -- usar enemysBlocks para criar um array de  enemys
-  -- let x = getRectangleX (head enemysBlocks)
-  -- let y = getRectangleY (head enemysBlocks)
-  --     enemys = [createEnemy x y False 0 0 2 2 (head enemysBlocks)]
-  -- let enemys' = map (\rect -> createEnemy (getRectangleX rect) (getRectangleY rect) False 0 0 2 2 rect) enemysBlocks
-  let enemys' = map (\b -> createEnemy (getRectangleX b) (getRectangleY b) False 0 0 2 2 b False 0) enemysRects
+  let map' = map (\b -> createMapFromShape b)  mapShape
 
+  let enemysRects = map (\b -> getRectangleEnemy b) map'
+  let enemys' = map (\rects -> map (\rect -> createEnemy (getRectangleX rect) (getRectangleY rect) False 0 0 2 2 rect False 0) rects) enemysRects
 
   return $ GameState {
     window = w,
     renderer = r,
     assets = assets',
-    character = createCharacter 10 10 False 10 10 1 3 False False False False 0,
+    character = createCharacter 00 10 False 10 10 1 3 False False False False 0, -- 1800 900
     -- enemy = createEnemy 250 317 False 0 0 2 2,  
-    gameMap = map',
+    gameMap = head map', -- [Block]
     font = font,
-    enemys = enemys'
+    enemys = head enemys', -- [Enemy]
+    enemysMaps = enemys', -- [[Enemy]]
+    maps = map', -- [[Block]]
+    nextMap = 1,
+    hitEnemy = False
   }
 
