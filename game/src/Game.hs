@@ -55,6 +55,7 @@ appLoop state = do
         else do
           let gameMapCurrent = if finish then maps !! nextMap else gameMap
           let nextMap' = if finish then nextMap + 1 else nextMap
+          let enemys' = if finish then enemysMaps !! nextMap else enemys
           let characterPos = if finish || hitEnemy  then character {
             C.xPos = 10,
             C.yPos = 10,
@@ -82,18 +83,18 @@ appLoop state = do
           ------------------------------------
 
           -- enemy --- 
-          let enemys' = map updateEnemy enemys
-          mapM_ (\enemy' -> drawEnemy renderer enemy' (pinkMan assets)) enemys'
+          let enemys'' = map updateEnemy enemys'
+          mapM_ (\enemy' -> drawEnemy renderer enemy' (pinkMan assets)) enemys''
           ------------------------------------
 
           -- Se colidir com inimigo então volta para o inicio - use enemys'
-          let getEnemyRectangles = map (\enemy' -> E.rectangle enemy') enemys'
+          let getEnemyRectangles = map (\enemy' -> E.rectangle enemy') enemys''
           
           let hitEnemy' = GR.hasCollidedWithAny (C.rectangle characterPos)  getEnemyRectangles
 
           SDL.present renderer
           SDL.delay 16
-          appLoop state {character = character'', gameMap = gameMap', enemys = enemys', nextMap = nextMap', hitEnemy = hitEnemy'}
+          appLoop state {character = character'', gameMap = gameMap', enemys = enemys'', nextMap = nextMap', hitEnemy = hitEnemy'}
 
 
 game :: IO ()
