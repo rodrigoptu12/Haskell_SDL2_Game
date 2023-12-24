@@ -5,6 +5,8 @@
 
 ## Introdução
 Nossa proposta visa resolver o desafio emocionante de criar um jogo em 2D no estilo plataforma, inspirado em clássicos como Super Mario, aproveitando o poder do pacote SDL2 com a linguagem de programação Haskell. Este jogo envolverá a implementação de diversos elementos interativos, incluindo um protagonista ágil, inimigos ameaçadores, obstáculos desafiadores, um sistema de pontuação e, claro, a emoção da conclusão do jogo.
+## Video
+https://youtu.be/jzIm0ntGeSc
 
 ## Como Rodar
       -cd game
