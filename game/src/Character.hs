@@ -71,7 +71,7 @@ isGrounded c blocks
         collided = GR.hasCollidedWithAny cRect bRects
 
 moveLogic :: Character -> [M.Block] -> GameEvent -> Character
-moveLogic c blocks g = if g == LeftPressed then updateCharacterXPos c {xVelocity = - 6}else if g == RightPressed then updateCharacterXPos c {xVelocity = 6} else c
+moveLogic c blocks g = if g == LeftPressed then updateCharacterXPos c {xVelocity = -9}else if g == RightPressed then updateCharacterXPos c {xVelocity = 9} else c
 
 jumpLogic :: [M.Block] -> Character -> Character
 jumpLogic blocks c@Character {jumping = True, jumpHeight = jh, yVelocity = vy, xVelocity = vx} =
@@ -94,5 +94,5 @@ updateCharacterWithEvents c blocks
   | otherwise = c'
   where
     c' = gravityLogic c blocks
-    shouldJump = if isGrounded c' blocks && not (jumping c' == True) then (updateCharacterJumping c'{yVelocity = 20} True)  else c'
+    shouldJump = if isGrounded c' blocks && not (jumping c' == True) then (updateCharacterJumping c'{yVelocity = 25} True)  else c'
 

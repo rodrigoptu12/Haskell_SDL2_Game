@@ -9,6 +9,7 @@ module Map(
   getCollisionBlockRectangles,
   getCollisionGroundBlocks,
   getCollisionAppleBlocks,
+  getCollisionEnemyBlocks,
   getBlocksAroundCharacter,
   getMapMaxX,
   getMapMaxY,
@@ -71,7 +72,8 @@ mapShape =[
     "..............A...I......A..........V..",
     "#######################################"
   ],
-  [ ".......................................",
+  [ 
+    ".......................................",
     "#########....................#####.....",
     "*********......A..I..A#######*****.....",
     ".........******#######*******........A.",
@@ -130,6 +132,9 @@ getCollisionGroundBlocks  = filter (\b -> blockType b == Ground) . getCollisionB
 
 getCollisionAppleBlocks :: [Block] -> [Block]
 getCollisionAppleBlocks  = filter (\b -> blockType b == Apple) . getCollisionBlocks
+
+getCollisionEnemyBlocks :: [Block] -> [Block]
+getCollisionEnemyBlocks  = filter (\b -> blockType b == Enemy) . getCollisionBlocks
 
 getCollisionBlockRectangles :: [Block] -> [SDL.Rectangle CInt]
 getCollisionBlockRectangles = map rectangle . getCollisionBlocks

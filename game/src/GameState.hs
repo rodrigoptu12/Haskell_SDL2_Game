@@ -36,7 +36,7 @@ initialState = do
   SDL.initializeAll
   Font.initialize
   -- 800 x 600
-  w <- SDL.createWindow "Oiram Epoosh Game"  SDL.defaultWindow { SDL.windowInitialSize = SDL.V2 800 600 }
+  w <- SDL.createWindow "Oiram Epoosh Game"  SDL.defaultWindow { SDL.windowInitialSize = SDL.V2 1950 1000 }
   r <- SDL.createRenderer w (-1) SDL.defaultRenderer
   assets' <- mapM (SDLImage.loadTexture r) surfacePaths
   font <- loadFont "./assets2try/fast99.ttf" 24

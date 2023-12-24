@@ -1,7 +1,8 @@
 module FontGame (
     loadFont,
     renderText,
-    drawTexture
+    drawTexture,
+    drawTextureGameEnd
 ) where
 
 import qualified SDL.Font as Font
@@ -29,6 +30,12 @@ renderText font text color renderer = liftIO $ do
 drawTexture :: SDL.Renderer -> SDL.Texture -> IO ()
 drawTexture renderer texture = do
   let destRect = SDL.Rectangle (SDL.P (SDL.V2 0 0)) (SDL.V2 100 50)
+  SDL.copy renderer texture Nothing (Just destRect)
+
+--centered 70% of the screen
+drawTextureGameEnd :: SDL.Renderer -> SDL.Texture -> IO ()
+drawTextureGameEnd renderer texture = do
+  let destRect = SDL.Rectangle (SDL.P (SDL.V2 375 200)) (SDL.V2 1200 300)
   SDL.copy renderer texture Nothing (Just destRect)
 
 
