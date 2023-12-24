@@ -5,6 +5,14 @@
 
 ## Introdução
 Nossa proposta visa resolver o desafio emocionante de criar um jogo em 2D no estilo plataforma, inspirado em clássicos como Super Mario, aproveitando o poder do pacote SDL2 com a linguagem de programação Haskell. Este jogo envolverá a implementação de diversos elementos interativos, incluindo um protagonista ágil, inimigos ameaçadores, obstáculos desafiadores, um sistema de pontuação e, claro, a emoção da conclusão do jogo.
+## Video
+https://youtu.be/jzIm0ntGeSc
+
+## Como Rodar
+      -cd game
+      -sudo apt install libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev pkg-config
+      -stack install
+      -stack run
 
 ## Objetivos
 1. **Desenvolvimento do Personagem Principal:**
@@ -35,3 +43,5 @@ Nossa implementação aproveitará as seguintes bibliotecas e recursos-chave:
 ## Complexidade e Desafios Antecipados
 Este projeto é classificado como de complexidade média. Enfrentaremos desafios significativos, incluindo:
 - **Implementação da Física do Jogo:** Será crucial criar uma simulação realista de física, incluindo a modelagem de fenômenos como a gravidade e a detecção precisa de colisões entre objetos.
+
+
